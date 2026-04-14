@@ -63,15 +63,27 @@ async function actualizarMemoria(recordId, history) {
 }
 
 /**
- * Registra un lead calificado en la tabla LEADS.
+ * Registra un lead calificado en la tabla LEADS de Airtable.
+ *
+ * Campos esperados en la tabla LEADS:
+ *   telefono, nombre_contacto, nombre_paciente, edad_paciente,
+ *   para_quien, ciudad, motivo, dni_contacto, dni_paciente,
+ *   psicologo_sugerido, fecha
  */
 async function registrarLead(telefono, lead) {
   await airtableClient.post("/LEADS", {
     fields: {
       telefono,
-      nombre: lead.nombre || "",
-      ciudad: lead.ciudad || "",
-      fecha: new Date().toISOString(),
+      nombre_contacto:    lead.nombre_contacto    || "",
+      nombre_paciente:    lead.nombre_paciente     || "",
+      edad_paciente:      lead.edad_paciente       ? String(lead.edad_paciente) : "",
+      para_quien:         lead.para_quien          || "",
+      ciudad:             lead.ciudad              || "",
+      motivo:             lead.motivo              || "",
+      dni_contacto:       lead.dni_contacto        || "",
+      dni_paciente:       lead.dni_paciente        || "",
+      psicologo_sugerido: lead.psicologo_sugerido  || "",
+      fecha:              new Date().toISOString(),
     },
   });
 }

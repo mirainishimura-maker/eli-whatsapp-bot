@@ -9,6 +9,27 @@ const evolutionClient = axios.create({
 });
 
 /**
+ * Activa el indicador "escribiendo..." en el chat del usuario.
+ * Evolution API lo mantiene visible mientras dura la petición (delayMs).
+ *
+ * @param {string} numero - Número destino
+ * @param {number} delayMs - Cuánto tiempo mostrar el indicador (ms)
+ */
+async function simularEscribiendo(numero, delayMs) {
+  const instancia = process.env.EVOLUTION_INSTANCE;
+
+  // Algunos deployments usan /chat/sendPresence, otros /presence
+  // Se intenta con el endpoint más común de Evolution API v2
+  await evolutionClient.post(`/chat/sendPresence/${instancia}`, {
+    number: numero,
+    options: {
+      presence: "composing",
+      delay: delayMs,
+    },
+  });
+}
+
+/**
  * Envía un mensaje de texto por WhatsApp usando Evolution API.
  * @param {string} numero - Número destino (formato: 51987654321 sin +)
  * @param {string} texto - Texto a enviar
@@ -48,4 +69,4 @@ function extraerTelefono(remoteJid) {
   return remoteJid.replace(/@.*$/, "");
 }
 
-module.exports = { enviarMensaje, extraerTexto, extraerTelefono };
+module.exports = { simularEscribiendo, enviarMensaje, extraerTexto, extraerTelefono };

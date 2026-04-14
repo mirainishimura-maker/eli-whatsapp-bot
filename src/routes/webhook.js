@@ -1,82 +1,100 @@
 const express = require("express");
 const router = express.Router();
 
-const { extraerTexto, extraerTelefono, enviarMensaje } = require("../services/evolution");
+const { extraerTexto, extraerTelefono, simularEscribiendo, enviarMensaje } = require("../services/evolution");
 const { procesarConIA } = require("../services/openai");
+const { derivarLeadAAsistente } = require("../services/routing");
 const {
   buscarMemoria,
   crearMemoria,
   actualizarMemoria,
   registrarLead,
 } = require("../services/airtable");
+const { calcularDemora, esperar } = require("../utils/humanDelay");
 
 /**
- * POST /webhook
- * Endpoint principal que recibe eventos de Evolution API.
+ * Procesa el mensaje en background: IA → typing → envío → CRM → routing.
  */
-router.post("/", async (req, res, next) => {
+async function procesarMensaje(telefono, textoUsuario) {
   try {
-    const body = req.body;
-
-    // --- 1. VALIDAR ESTRUCTURA DEL PAYLOAD ---
-    const data = body?.data;
-    if (!data) {
-      return res.status(200).json({ status: "ignored", reason: "no data" });
-    }
-
-    // Ignorar mensajes enviados por nosotros mismos
-    if (data.key?.fromMe === true) {
-      return res.status(200).json({ status: "ignored", reason: "fromMe" });
-    }
-
-    // Ignorar mensajes de grupos (remoteJid termina en @g.us)
-    const remoteJid = data.key?.remoteJid || "";
-    if (remoteJid.endsWith("@g.us")) {
-      return res.status(200).json({ status: "ignored", reason: "group message" });
-    }
-
-    // --- 2. EXTRAER DATOS DEL MENSAJE ---
-    const telefono = extraerTelefono(remoteJid);
-    const textoUsuario = extraerTexto(data.message);
-
-    if (!telefono || !textoUsuario) {
-      return res.status(200).json({ status: "ignored", reason: "no text or phone" });
-    }
-
-    console.log(`[WEBHOOK] Mensaje de ${telefono}: "${textoUsuario}"`);
-
-    // --- 3. RECUPERAR MEMORIA DE AIRTABLE ---
+    // --- 1. RECUPERAR MEMORIA ---
     const memoriaExistente = await buscarMemoria(telefono);
     const historyPrevio = memoriaExistente ? memoriaExistente.history : [];
 
-    // --- 4. PROCESAR CON IA ---
+    // --- 2. PROCESAR CON IA ---
     const { respuesta, lead, historialActualizado } = await procesarConIA(
       historyPrevio,
       textoUsuario
     );
 
-    console.log(`[IA] Respuesta para ${telefono}: "${respuesta}" | Lead: ${JSON.stringify(lead)}`);
+    console.log(`[IA] ${telefono} → calificado:${lead?.calificado} ciudad:${lead?.ciudad}`);
 
-    // --- 5. ACTUALIZAR MEMORIA EN AIRTABLE ---
-    if (memoriaExistente) {
-      await actualizarMemoria(memoriaExistente.recordId, historialActualizado);
-    } else {
-      await crearMemoria(telefono, historialActualizado);
+    // --- 3. SIMULAR ESCRITURA HUMANA ---
+    const demoraMs = calcularDemora(respuesta);
+    console.log(`[DELAY] ${telefono} → ${(demoraMs / 1000).toFixed(1)}s`);
+
+    try {
+      await simularEscribiendo(telefono, demoraMs);
+    } catch (presenceErr) {
+      console.warn(`[TYPING] Presencia no disponible para ${telefono}:`, presenceErr.message);
     }
 
-    // --- 6. ENVIAR RESPUESTA POR WHATSAPP ---
+    await esperar(demoraMs);
+
+    // --- 4. ENVIAR RESPUESTA ---
     await enviarMensaje(telefono, respuesta);
 
-    // --- 7. REGISTRAR LEAD CALIFICADO EN CRM ---
-    if (lead?.calificado === true) {
-      console.log(`[CRM] Lead calificado detectado: ${JSON.stringify(lead)}`);
-      await registrarLead(telefono, lead);
+    // --- 5. PERSISTENCIA Y ACCIONES POST-CALIFICACIÓN (en paralelo) ---
+    const promesas = [];
+
+    // Actualizar o crear memoria
+    if (memoriaExistente) {
+      promesas.push(actualizarMemoria(memoriaExistente.recordId, historialActualizado));
+    } else {
+      promesas.push(crearMemoria(telefono, historialActualizado));
     }
 
-    return res.status(200).json({ status: "ok" });
+    // Si el lead está calificado: registrar en CRM y derivar a asistente
+    if (lead?.calificado === true) {
+      console.log(`[CRM] Lead calificado: ${lead.nombre_contacto} — ${lead.ciudad}`);
+      promesas.push(registrarLead(telefono, lead));
+      promesas.push(derivarLeadAAsistente(telefono, lead));
+    }
+
+    await Promise.all(promesas);
   } catch (err) {
-    next(err);
+    console.error(`[ERROR] Fallo procesando mensaje de ${telefono}:`, err.message);
+    if (err.response) {
+      console.error(`[API ERROR] status=${err.response.status} url=${err.config?.url}`, err.response.data);
+    }
   }
+}
+
+/**
+ * POST /webhook
+ * Recibe eventos de Evolution API. Responde 200 inmediatamente
+ * y procesa en background.
+ */
+router.post("/", (req, res) => {
+  const data = req.body?.data;
+
+  if (!data) return res.status(200).json({ status: "ignored", reason: "no data" });
+  if (data.key?.fromMe === true) return res.status(200).json({ status: "ignored", reason: "fromMe" });
+
+  const remoteJid = data.key?.remoteJid || "";
+  if (remoteJid.endsWith("@g.us")) return res.status(200).json({ status: "ignored", reason: "group" });
+
+  const telefono = extraerTelefono(remoteJid);
+  const textoUsuario = extraerTexto(data.message);
+
+  if (!telefono || !textoUsuario) {
+    return res.status(200).json({ status: "ignored", reason: "no text or phone" });
+  }
+
+  console.log(`[WEBHOOK] ${telefono}: "${textoUsuario}"`);
+
+  res.status(200).json({ status: "processing" });
+  procesarMensaje(telefono, textoUsuario);
 });
 
 module.exports = router;
