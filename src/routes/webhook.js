@@ -95,6 +95,7 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
 
     // ── 1. Recuperar memoria ───────────────────────────────────────────────
     const memoriaExistente = await buscarMemoria(telefono);
+    const esPrimerContacto = !memoriaExistente;
     const historyPrevio = memoriaExistente ? memoriaExistente.history : [];
 
     // ── 2. Arrancar "escribiendo..." antes de llamar a la IA ──────────────
@@ -117,6 +118,13 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
 
     // ── 5. Detener typing y enviar respuesta ───────────────────────────────
     presencia.detener();
+
+    // Primer contacto: enviar imagen de bienvenida antes del saludo
+    if (esPrimerContacto && process.env.IMG_BIENVENIDA) {
+      await enviarImagenUrl(telefono, process.env.IMG_BIENVENIDA, "");
+      await esperar(800);
+    }
+
     await enviarMensajeChunked(telefono, respuesta);
 
     // ── 5. Persistencia y routing (en paralelo) ────────────────────────────
