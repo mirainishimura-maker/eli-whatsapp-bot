@@ -201,15 +201,7 @@ router.post("/", (req, res) => {
   pending.timer = setTimeout(() => {
     const mensajesAcumulados = pending.mensajes;
     pendingMessages.delete(telefono);
-
-    // Mostrar "escribiendo..." solo ahora, después de los 45s de espera
-    const hayContenido = mensajesAcumulados.some((m) => m.tipo !== "sticker");
-    if (hayContenido) {
-      presenciaInmediata(telefono).catch((e) =>
-        console.warn(`[PRESENCE] No disponible para ${telefono}:`, e.message)
-      );
-    }
-
+    // El loop de typing lo arranca procesarMensajesAcumulados internamente
     procesarMensajesAcumulados(telefono, mensajesAcumulados);
   }, DEBOUNCE_MS);
 

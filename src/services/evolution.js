@@ -27,26 +27,34 @@ function iniciarPresencia(numero) {
   const instancia = process.env.EVOLUTION_INSTANCE;
   let activo = true;
 
+  // Evolution API a veces requiere el JID completo para presencia
+  const jid = numero.includes("@") ? numero : `${numero}@s.whatsapp.net`;
+
   const tick = () => {
     if (!activo) return;
     evolutionClient
       .post(`/chat/sendPresence/${instancia}`, {
-        number: numero,
+        number: jid,
         options: { presence: "composing", delay: 6000 },
       })
-      .catch(() => {}) // silencioso — no rompe el flujo si falla
+      .then(() => {
+        console.log(`[PRESENCE] ✓ typing enviado a ${numero}`);
+      })
+      .catch((e) => {
+        console.warn(
+          `[PRESENCE] ✗ error para ${numero}:`,
+          e.response?.status,
+          JSON.stringify(e.response?.data) || e.message
+        );
+      })
       .finally(() => {
         if (activo) setTimeout(tick, 5000);
       });
   };
 
-  tick(); // primer tick inmediato
+  tick();
 
-  return {
-    detener: () => {
-      activo = false;
-    },
-  };
+  return { detener: () => { activo = false; } };
 }
 
 /**
