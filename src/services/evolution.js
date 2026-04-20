@@ -13,39 +13,55 @@ const evolutionClient = axios.create({
 // ─────────────────────────────────────────────
 
 /**
- * Dispara el indicador "escribiendo..." de forma inmediata al recibir el mensaje.
- * Se llama en background (fire-and-forget) desde el webhook para que el usuario
- * vea a Eli activa mientras se procesa el mensaje.
+ * Inicia un loop de "escribiendo..." que se renueva cada 5 segundos.
+ * Necesario porque Evolution API no garantiza mantener el indicador
+ * más de unos segundos con un solo request.
+ *
+ * Retorna una función `detener()` que para el loop cuando la respuesta
+ * ya fue enviada.
  *
  * @param {string} numero - Número destino
+ * @returns {{ detener: () => void }}
  */
-async function presenciaInmediata(numero) {
+function iniciarPresencia(numero) {
   const instancia = process.env.EVOLUTION_INSTANCE;
-  await evolutionClient.post(`/chat/sendPresence/${instancia}`, {
-    number: numero,
-    options: {
-      presence: "composing",
-      delay: 15000, // 15 segundos — cubre el tiempo inicial de procesamiento
+  let activo = true;
+
+  const tick = () => {
+    if (!activo) return;
+    evolutionClient
+      .post(`/chat/sendPresence/${instancia}`, {
+        number: numero,
+        options: { presence: "composing", delay: 6000 },
+      })
+      .catch(() => {}) // silencioso — no rompe el flujo si falla
+      .finally(() => {
+        if (activo) setTimeout(tick, 5000);
+      });
+  };
+
+  tick(); // primer tick inmediato
+
+  return {
+    detener: () => {
+      activo = false;
     },
-  });
+  };
 }
 
 /**
- * Activa el indicador "escribiendo..." justo antes de enviar la respuesta.
- * Lo mantiene visible durante delayMs milisegundos.
- *
- * @param {string} numero   - Número destino
- * @param {number} delayMs  - Cuánto tiempo mostrar el indicador (ms)
+ * @deprecated Usar iniciarPresencia() en su lugar.
+ * Se mantiene por compatibilidad con cualquier referencia pendiente.
+ */
+async function presenciaInmediata(numero) {
+  iniciarPresencia(numero); // simplemente arranca el loop
+}
+
+/**
+ * @deprecated Usar iniciarPresencia() en su lugar.
  */
 async function simularEscribiendo(numero, delayMs) {
-  const instancia = process.env.EVOLUTION_INSTANCE;
-  await evolutionClient.post(`/chat/sendPresence/${instancia}`, {
-    number: numero,
-    options: {
-      presence: "composing",
-      delay: delayMs,
-    },
-  });
+  // no-op: el loop ya está corriendo via iniciarPresencia
 }
 
 // ─────────────────────────────────────────────
@@ -178,6 +194,7 @@ async function enviarImagenUrl(numero, url, caption = "") {
 }
 
 module.exports = {
+  iniciarPresencia,
   presenciaInmediata,
   simularEscribiendo,
   enviarMensaje,

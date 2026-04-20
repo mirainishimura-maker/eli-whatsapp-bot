@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
+  iniciarPresencia,
   presenciaInmediata,
   simularEscribiendo,
   enviarMensajeChunked,
@@ -96,7 +97,11 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     const memoriaExistente = await buscarMemoria(telefono);
     const historyPrevio = memoriaExistente ? memoriaExistente.history : [];
 
-    // ── 2. Procesar con IA ─────────────────────────────────────────────────
+    // ── 2. Arrancar "escribiendo..." antes de llamar a la IA ──────────────
+    // El loop se renueva cada 5s automáticamente hasta que llamemos detener()
+    const presencia = iniciarPresencia(telefono);
+
+    // ── 3. Procesar con IA ─────────────────────────────────────────────────
     const { respuesta, lead, imagenes, historialActualizado } = await procesarConIA(
       historyPrevio,
       textoFinal,
@@ -105,19 +110,13 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
 
     console.log(`[IA] ${telefono} → calificacion:${lead?.calificacion} ciudad:${lead?.ciudad}`);
 
-    // ── 3. Simular escritura humana ────────────────────────────────────────
+    // ── 4. Esperar demora humana (typing sigue visible durante este tiempo) ─
     const demoraMs = calcularDemora(respuesta);
     console.log(`[DELAY] ${telefono} → ${(demoraMs / 1000).toFixed(1)}s`);
-
-    try {
-      await simularEscribiendo(telefono, demoraMs);
-    } catch (e) {
-      console.warn(`[TYPING] Presencia no disponible para ${telefono}:`, e.message);
-    }
-
     await esperar(demoraMs);
 
-    // ── 4. Enviar respuesta ────────────────────────────────────────────────
+    // ── 5. Detener typing y enviar respuesta ───────────────────────────────
+    presencia.detener();
     await enviarMensajeChunked(telefono, respuesta);
 
     // ── 5. Persistencia y routing (en paralelo) ────────────────────────────
