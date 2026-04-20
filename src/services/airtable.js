@@ -63,34 +63,52 @@ async function actualizarMemoria(recordId, history) {
 }
 
 /**
- * Registra un lead calificado en la tabla LEADS de Airtable.
+ * Crea o actualiza un lead en la tabla LEADS de Airtable.
+ * Si ya existe un registro con ese teléfono, lo actualiza.
+ * Si no existe, lo crea.
+ *
+ * Retorna { isNew: boolean, recordId: string }
  *
  * Campos esperados en la tabla LEADS:
  *   telefono, nombre_contacto, nombre_paciente, edad_paciente,
  *   para_quien, ciudad, motivo, dni_contacto, dni_paciente,
- *   psicologo_sugerido, fecha
+ *   psicologo_sugerido, calificacion, fecha
  */
-async function registrarLead(telefono, lead) {
-  await airtableClient.post("/LEADS", {
-    fields: {
-      telefono,
-      nombre_contacto:    lead.nombre_contacto    || "",
-      nombre_paciente:    lead.nombre_paciente     || "",
-      edad_paciente:      lead.edad_paciente       ? String(lead.edad_paciente) : "",
-      para_quien:         lead.para_quien          || "",
-      ciudad:             lead.ciudad              || "",
-      motivo:             lead.motivo              || "",
-      dni_contacto:       lead.dni_contacto        || "",
-      dni_paciente:       lead.dni_paciente        || "",
-      psicologo_sugerido: lead.psicologo_sugerido  || "",
-      fecha:              new Date().toISOString(),
-    },
-  });
+async function registrarOActualizarLead(telefono, lead) {
+  const fields = {
+    telefono,
+    nombre_contacto:    lead.nombre_contacto    || "",
+    nombre_paciente:    lead.nombre_paciente     || "",
+    edad_paciente:      lead.edad_paciente       ? String(lead.edad_paciente) : "",
+    para_quien:         lead.para_quien          || "",
+    ciudad:             lead.ciudad              || "",
+    motivo:             lead.motivo              || "",
+    dni_contacto:       lead.dni_contacto        || "",
+    dni_paciente:       lead.dni_paciente        || "",
+    psicologo_sugerido: lead.psicologo_sugerido  || "",
+    calificacion:       lead.calificacion        || "",
+  };
+
+  // Buscar si ya existe un lead con este teléfono
+  const formula = encodeURIComponent(`{telefono}="${telefono}"`);
+  const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
+  const records = response.data.records;
+
+  if (records.length > 0) {
+    const recordId = records[0].id;
+    await airtableClient.patch(`/LEADS/${recordId}`, { fields });
+    return { isNew: false, recordId };
+  }
+
+  // Crear nuevo registro
+  fields.fecha = new Date().toISOString();
+  const newRecord = await airtableClient.post("/LEADS", { fields });
+  return { isNew: true, recordId: newRecord.data.id };
 }
 
 module.exports = {
   buscarMemoria,
   crearMemoria,
   actualizarMemoria,
-  registrarLead,
+  registrarOActualizarLead,
 };
