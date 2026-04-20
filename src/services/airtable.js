@@ -111,19 +111,27 @@ async function actualizarUltimaActividad(recordId) {
 /**
  * Retorna leads "fríos": sin respuesta entre 60 y 90 minutos,
  * con calificación activa y nombre conocido.
- * La ventana de 30 min garantiza que el cron (cada 15 min) solo dispare una vez por lead.
+ * El filtrado de tiempo se hace en JavaScript para evitar problemas
+ * con fórmulas de fecha en la API de Airtable.
  */
 async function obtenerLeadsFrios() {
+  // Traer solo leads activos (no BAJO, con nombre) que tengan ultima_actividad
   const formula = encodeURIComponent(
-    `AND(` +
-    `IS_BEFORE({ultima_actividad}, DATEADD(NOW(), -60, 'minutes')),` +
-    `IS_AFTER({ultima_actividad}, DATEADD(NOW(), -90, 'minutes')),` +
-    `{calificacion} != 'BAJO',` +
-    `{nombre_contacto} != ''` +
-    `)`
+    `AND({calificacion} != 'BAJO', {calificacion} != '', {nombre_contacto} != '')`
   );
   const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
-  return response.data.records;
+  const records = response.data.records;
+
+  const ahora = Date.now();
+  const UMBRAL_MIN_MS = 60 * 60 * 1000; // 60 minutos
+  const UMBRAL_MAX_MS = 90 * 60 * 1000; // 90 minutos
+
+  return records.filter((record) => {
+    const ultimaActividad = record.fields.ultima_actividad;
+    if (!ultimaActividad) return false;
+    const diff = ahora - new Date(ultimaActividad).getTime();
+    return diff >= UMBRAL_MIN_MS && diff <= UMBRAL_MAX_MS;
+  });
 }
 
 module.exports = {
