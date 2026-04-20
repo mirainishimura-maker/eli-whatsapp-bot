@@ -89,21 +89,22 @@ function construirListoParaCoordinar(telefonoCliente, lead) {
 }
 
 function construirRecontacto(telefonoCliente, lead) {
-  const icono = {
-    ALTO:  "🔴 ALTO",
-    MEDIO: "🟡 MEDIO",
-    BAJO:  "🟢 BAJO",
-  }[lead.calificacion] || "⚪";
+  // Soporta tanto campos del objeto lead (snake_case) como campos reales de Airtable (MAYÚSCULAS)
+  const nombre     = lead.nombre_contacto || lead["NOMBRES"]            || "este lead";
+  const motivo     = lead.motivo          || lead["MOTIVO"]             || "—";
+  const estado     = lead.calificacion    || lead["ESTADO"]             || "";
+
+  const icono = { ALTO: "🔴 ALTO", MEDIO: "🟡 MEDIO", BAJO: "🟢 BAJO" }[estado] || "⚪";
 
   const lineas = [
     "⚠️ *RECONTACTO PENDIENTE — ÍTACA PIURA*",
     "",
-    `Eli envió seguimiento automático a *${lead.nombre_contacto || "este lead"}* pero no respondió.`,
+    `Eli envió seguimiento automático a *${nombre}* pero no respondió.`,
     "",
     `📱 WhatsApp: wa.me/${telefonoCliente}`,
-    `👤 Contacto: ${lead.nombre_contacto || "—"}`,
-    `💬 Motivo: ${lead.motivo || "—"}`,
-    `📊 Calificación: ${icono}`,
+    `👤 Contacto: ${nombre}`,
+    `💬 Motivo: ${motivo}`,
+    `📊 Estado: ${icono}`,
     "",
     "👉 *Escríbele o llámala directamente para no perder el lead.*",
   ];

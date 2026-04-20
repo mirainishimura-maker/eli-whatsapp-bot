@@ -61,41 +61,50 @@ async function actualizarMemoria(recordId, history) {
  * Crea o actualiza un lead en la tabla LEADS de Airtable.
  * Retorna { isNew, dniNuevo, recordId }
  *
- * dniNuevo = true cuando el DNI se capturó por primera vez en esta llamada.
+ * dniNuevo = true cuando el DNI se capturó por primera vez.
  * Eso dispara la notificación "LISTO PARA COORDINAR" a Yazmin.
  */
 async function registrarOActualizarLead(telefono, lead) {
+  const ahora = new Date().toISOString();
+
   const fields = {
-    telefono,
-    nombre_contacto:    lead.nombre_contacto    || "",
-    nombre_paciente:    lead.nombre_paciente     || "",
-    edad_paciente:      lead.edad_paciente       ? String(lead.edad_paciente) : "",
-    para_quien:         lead.para_quien          || "",
-    ciudad:             lead.ciudad              || "",
-    motivo:             lead.motivo              || "",
-    dni_contacto:       lead.dni_contacto        || "",
-    dni_paciente:       lead.dni_paciente        || "",
-    psicologo_sugerido: lead.psicologo_sugerido  || "",
-    calificacion:       lead.calificacion        || "",
-    ultima_actividad:   new Date().toISOString(),
+    "CELULAR":             telefono,
+    "NOMBRES":             lead.nombre_contacto   || "",
+    "PACIENTE":            lead.nombre_paciente    || "",
+    "EDAD":                lead.edad_paciente      ? String(lead.edad_paciente) : "",
+    "LEAD DE":             lead.para_quien         || "",
+    "DISTRITO":            lead.ciudad             || "",
+    "MOTIVO":              lead.motivo             || "",
+    "PSICOLOGO ASIGNADO":  lead.psicologo_sugerido || "",
+    "ESTADO":              lead.calificacion       || "",
+    "ultima_actividad":    ahora,
   };
 
-  const formula = encodeURIComponent(`{telefono}="${telefono}"`);
+  // DNI va en notas adicionales (no hay campo específico en la tabla)
+  const dniInfo = [];
+  if (lead.dni_contacto) dniInfo.push(`DNI contacto: ${lead.dni_contacto}`);
+  if (lead.dni_paciente) dniInfo.push(`DNI paciente: ${lead.dni_paciente}`);
+  if (dniInfo.length > 0) {
+    fields["INFORMACION ADICIONAL DE SEGUIMIENTO"] = dniInfo.join(" | ");
+  }
+
+  const formula = encodeURIComponent(`{CELULAR}="${telefono}"`);
   const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
   const records = response.data.records;
 
   if (records.length > 0) {
     const record = records[0];
     const recordId = record.id;
-    const oldDni = record.fields.dni_contacto || "";
-    const dniNuevo = !oldDni && !!lead.dni_contacto;
+    // dniNuevo = había registro sin DNI y ahora llega con DNI
+    const teniaDni = !!(record.fields["INFORMACION ADICIONAL DE SEGUIMIENTO"] || "").includes("DNI");
+    const dniNuevo = !teniaDni && dniInfo.length > 0;
     await airtableClient.patch(`/LEADS/${recordId}`, { fields });
     return { isNew: false, dniNuevo, recordId };
   }
 
-  fields.fecha = new Date().toISOString();
+  fields["FECHA"] = ahora;
   const newRecord = await airtableClient.post("/LEADS", { fields });
-  return { isNew: true, dniNuevo: !!lead.dni_contacto, recordId: newRecord.data.id };
+  return { isNew: true, dniNuevo: dniInfo.length > 0, recordId: newRecord.data.id };
 }
 
 /**
@@ -117,7 +126,7 @@ async function actualizarUltimaActividad(recordId) {
 async function obtenerLeadsFrios() {
   // Traer solo leads activos (no BAJO, con nombre) que tengan ultima_actividad
   const formula = encodeURIComponent(
-    `AND({calificacion} != 'BAJO', {calificacion} != '', {nombre_contacto} != '')`
+    `AND({ESTADO} != 'BAJO', {ESTADO} != '', {NOMBRES} != '')`
   );
   const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
   const records = response.data.records;
