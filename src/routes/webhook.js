@@ -132,8 +132,9 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     if (lead?.calificacion != null) {
       console.log(`[CRM] Lead ${lead.calificacion}: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
       promesas.push(
-        registrarOActualizarLead(telefono, lead).then(({ isNew }) => {
-          if (isNew) return derivarLeadAAsistente(telefono, lead);
+        registrarOActualizarLead(telefono, lead).then(({ isNew, dniNuevo }) => {
+          if (isNew) return derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD");
+          if (dniNuevo) return derivarLeadAAsistente(telefono, lead, "LISTO_PARA_COORDINAR");
         })
       );
     }

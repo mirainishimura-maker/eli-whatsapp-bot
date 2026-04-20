@@ -32,10 +32,7 @@ async function buscarMemoria(telefono) {
     history = [];
   }
 
-  return {
-    recordId: record.id,
-    history,
-  };
+  return { recordId: record.id, history };
 }
 
 /**
@@ -56,23 +53,16 @@ async function crearMemoria(telefono, history) {
  */
 async function actualizarMemoria(recordId, history) {
   await airtableClient.patch(`/Eli_Memoria/${recordId}`, {
-    fields: {
-      history: JSON.stringify(history),
-    },
+    fields: { history: JSON.stringify(history) },
   });
 }
 
 /**
  * Crea o actualiza un lead en la tabla LEADS de Airtable.
- * Si ya existe un registro con ese teléfono, lo actualiza.
- * Si no existe, lo crea.
+ * Retorna { isNew, dniNuevo, recordId }
  *
- * Retorna { isNew: boolean, recordId: string }
- *
- * Campos esperados en la tabla LEADS:
- *   telefono, nombre_contacto, nombre_paciente, edad_paciente,
- *   para_quien, ciudad, motivo, dni_contacto, dni_paciente,
- *   psicologo_sugerido, calificacion, fecha
+ * dniNuevo = true cuando el DNI se capturó por primera vez en esta llamada.
+ * Eso dispara la notificación "LISTO PARA COORDINAR" a Yazmin.
  */
 async function registrarOActualizarLead(telefono, lead) {
   const fields = {
@@ -87,23 +77,53 @@ async function registrarOActualizarLead(telefono, lead) {
     dni_paciente:       lead.dni_paciente        || "",
     psicologo_sugerido: lead.psicologo_sugerido  || "",
     calificacion:       lead.calificacion        || "",
+    ultima_actividad:   new Date().toISOString(),
   };
 
-  // Buscar si ya existe un lead con este teléfono
   const formula = encodeURIComponent(`{telefono}="${telefono}"`);
   const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
   const records = response.data.records;
 
   if (records.length > 0) {
-    const recordId = records[0].id;
+    const record = records[0];
+    const recordId = record.id;
+    const oldDni = record.fields.dni_contacto || "";
+    const dniNuevo = !oldDni && !!lead.dni_contacto;
     await airtableClient.patch(`/LEADS/${recordId}`, { fields });
-    return { isNew: false, recordId };
+    return { isNew: false, dniNuevo, recordId };
   }
 
-  // Crear nuevo registro
   fields.fecha = new Date().toISOString();
   const newRecord = await airtableClient.post("/LEADS", { fields });
-  return { isNew: true, recordId: newRecord.data.id };
+  return { isNew: true, dniNuevo: !!lead.dni_contacto, recordId: newRecord.data.id };
+}
+
+/**
+ * Actualiza solo ultima_actividad de un lead (para el sistema de recontacto).
+ * Se llama después de enviar el seguimiento automático para no re-dispararlo.
+ */
+async function actualizarUltimaActividad(recordId) {
+  await airtableClient.patch(`/LEADS/${recordId}`, {
+    fields: { ultima_actividad: new Date().toISOString() },
+  });
+}
+
+/**
+ * Retorna leads "fríos": sin respuesta entre 60 y 90 minutos,
+ * con calificación activa y nombre conocido.
+ * La ventana de 30 min garantiza que el cron (cada 15 min) solo dispare una vez por lead.
+ */
+async function obtenerLeadsFrios() {
+  const formula = encodeURIComponent(
+    `AND(` +
+    `IS_BEFORE({ultima_actividad}, DATEADD(NOW(), -60, 'minutes')),` +
+    `IS_AFTER({ultima_actividad}, DATEADD(NOW(), -90, 'minutes')),` +
+    `{calificacion} != 'BAJO',` +
+    `{nombre_contacto} != ''` +
+    `)`
+  );
+  const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
+  return response.data.records;
 }
 
 module.exports = {
@@ -111,4 +131,6 @@ module.exports = {
   crearMemoria,
   actualizarMemoria,
   registrarOActualizarLead,
+  actualizarUltimaActividad,
+  obtenerLeadsFrios,
 };

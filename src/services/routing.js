@@ -1,13 +1,14 @@
 const { enviarMensaje } = require("./evolution");
 
 /**
- * Deriva un lead calificado a Yazmin (asistente de Piura) por WhatsApp.
- * Este bot atiende únicamente la sede Piura.
+ * Deriva notificaciones a Yazmin (asistente de Piura) según el tipo de evento.
  *
- * @param {string} telefonoCliente - Número del usuario que habló con Eli
- * @param {object} lead - Objeto con todos los datos del lead
+ * Tipos:
+ *   'NUEVO_LEAD'          — lead calificado por primera vez
+ *   'LISTO_PARA_COORDINAR' — Eli ya recopiló DNI, listo para asignar horario y cobrar
+ *   'RECONTACTO'          — lead frío, Eli envió seguimiento automático sin respuesta
  */
-async function derivarLeadAAsistente(telefonoCliente, lead) {
+async function derivarLeadAAsistente(telefonoCliente, lead, tipo = "NUEVO_LEAD") {
   const numeroYazmin = process.env.ASISTENTE_PIURA;
 
   if (!numeroYazmin) {
@@ -15,43 +16,97 @@ async function derivarLeadAAsistente(telefonoCliente, lead) {
     return;
   }
 
-  const resumen = construirResumenLead(telefonoCliente, lead);
+  const mensajes = {
+    NUEVO_LEAD:           construirNuevoLead,
+    LISTO_PARA_COORDINAR: construirListoParaCoordinar,
+    RECONTACTO:           construirRecontacto,
+  };
+
+  const construir = mensajes[tipo] || construirNuevoLead;
+  const resumen = construir(telefonoCliente, lead);
+
   await enviarMensaje(numeroYazmin, resumen);
-  console.log(`[ROUTING] Lead derivado a Yazmin (Piura): ${numeroYazmin}`);
+  console.log(`[ROUTING] Notificación ${tipo} enviada a Yazmin: ${numeroYazmin}`);
 }
 
-/**
- * Construye el mensaje de resumen del lead para enviar a Yazmin.
- */
-function construirResumenLead(telefonoCliente, lead) {
-  const iconoCalificacion = {
+// ─────────────────────────────────────────────
+// PLANTILLAS DE MENSAJES PARA YAZMIN
+// ─────────────────────────────────────────────
+
+function construirNuevoLead(telefonoCliente, lead) {
+  const icono = {
     ALTO:  "🔴 ALTO  — cierre rápido probable",
     MEDIO: "🟡 MEDIO — requiere seguimiento",
-    BAJO:  "🟢 BAJO  — baja probabilidad de cierre",
+    BAJO:  "🟢 BAJO  — baja probabilidad",
   }[lead.calificacion] || "⚪ Sin calificar";
 
+  const esTercero = lead.para_quien && lead.para_quien !== "yo mismo";
+
   const lineas = [
-    "🔔 *NUEVO LEAD — ÍTACA CONVERSEMOS PIURA*",
+    "🔔 *NUEVO LEAD — ÍTACA PIURA*",
     "",
-    `📊 Calificación: ${iconoCalificacion}`,
+    `📊 ${icono}`,
     "",
     `📱 WhatsApp: wa.me/${telefonoCliente}`,
     `👤 Contacto: ${lead.nombre_contacto || "—"}`,
   ];
 
-  const esTercero = lead.para_quien && lead.para_quien !== "yo mismo";
-  if (esTercero) {
-    lineas.push(`🧑‍⚕️ Paciente: ${lead.nombre_paciente || "—"} (${lead.para_quien})`);
-  }
-
-  lineas.push(`🎂 Edad del paciente: ${lead.edad_paciente ?? "—"}`);
+  if (esTercero) lineas.push(`🧑‍⚕️ Paciente: ${lead.nombre_paciente || "—"} (${lead.para_quien})`);
+  lineas.push(`🎂 Edad: ${lead.edad_paciente ?? "—"}`);
   lineas.push(`💬 Motivo: ${lead.motivo || "—"}`);
-
-  if (lead.dni_contacto) lineas.push(`🪪 DNI contacto: ${lead.dni_contacto}`);
-  if (esTercero && lead.dni_paciente) lineas.push(`🪪 DNI paciente: ${lead.dni_paciente}`);
   if (lead.psicologo_sugerido) lineas.push(`👩‍⚕️ Psicólogo sugerido: ${lead.psicologo_sugerido}`);
 
-  lineas.push("", "⏳ Pendiente: confirmar horario y cobrar primera consulta (S/50).");
+  lineas.push("", "⏳ Eli está recopilando datos. Te avisaré cuando esté listo para coordinar.");
+
+  return lineas.join("\n");
+}
+
+function construirListoParaCoordinar(telefonoCliente, lead) {
+  const esTercero = lead.para_quien && lead.para_quien !== "yo mismo";
+  const nombre = lead.nombre_contacto || "el lead";
+
+  const lineas = [
+    "✅ *LISTO PARA COORDINAR — ÍTACA PIURA*",
+    "",
+    `${nombre} confirmó que quiere agendar y Eli ya recopiló sus datos.`,
+    "",
+    `📱 WhatsApp: wa.me/${telefonoCliente}`,
+    `👤 Contacto: ${lead.nombre_contacto || "—"}`,
+  ];
+
+  if (lead.dni_contacto) lineas.push(`🪪 DNI contacto: ${lead.dni_contacto}`);
+  if (esTercero) {
+    lineas.push(`🧑‍⚕️ Paciente: ${lead.nombre_paciente || "—"} (${lead.para_quien})`);
+    if (lead.dni_paciente) lineas.push(`🪪 DNI paciente: ${lead.dni_paciente}`);
+  }
+  lineas.push(`🎂 Edad: ${lead.edad_paciente ?? "—"}`);
+  lineas.push(`💬 Motivo: ${lead.motivo || "—"}`);
+  if (lead.psicologo_sugerido) lineas.push(`👩‍⚕️ Psicólogo sugerido: ${lead.psicologo_sugerido}`);
+
+  lineas.push("", "👉 *Siguiente paso:* envíale horarios disponibles y coordina el pago de S/50.");
+
+  return lineas.join("\n");
+}
+
+function construirRecontacto(telefonoCliente, lead) {
+  const icono = {
+    ALTO:  "🔴 ALTO",
+    MEDIO: "🟡 MEDIO",
+    BAJO:  "🟢 BAJO",
+  }[lead.calificacion] || "⚪";
+
+  const lineas = [
+    "⚠️ *RECONTACTO PENDIENTE — ÍTACA PIURA*",
+    "",
+    `Eli envió seguimiento automático a *${lead.nombre_contacto || "este lead"}* pero no respondió.`,
+    "",
+    `📱 WhatsApp: wa.me/${telefonoCliente}`,
+    `👤 Contacto: ${lead.nombre_contacto || "—"}`,
+    `💬 Motivo: ${lead.motivo || "—"}`,
+    `📊 Calificación: ${icono}`,
+    "",
+    "👉 *Escríbele o llámala directamente para no perder el lead.*",
+  ];
 
   return lineas.join("\n");
 }

@@ -1,8 +1,12 @@
 const express = require("express");
 const webhookRouter = require("./routes/webhook");
 const errorHandler = require("./middleware/errorHandler");
+const { iniciarFollowup } = require("./services/followup");
 
 const app = express();
+
+// Iniciar sistema de seguimiento automático de leads fríos
+iniciarFollowup();
 
 // Parsear JSON en el body de las peticiones
 app.use(express.json());
