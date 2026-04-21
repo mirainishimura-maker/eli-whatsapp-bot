@@ -58,8 +58,6 @@ const {
 } = require("../services/airtable");
 const { calcularDemora, esperar } = require("../utils/humanDelay");
 
-const RESPUESTA_STICKER = "Qué lindo 😄 Cuéntame, ¿en qué te puedo ayudar?";
-
 // ── DEBOUNCE ────────────────────────────────────────────────────────────────
 // Espera 45 segundos desde el ÚLTIMO mensaje del usuario antes de procesar.
 // Si llegan varios mensajes seguidos (burbujas), los acumula y los procesa juntos
@@ -73,19 +71,16 @@ const pendingMessages = new Map(); // telefono → { timer, mensajes[] }
  */
 async function procesarMensajesAcumulados(telefono, mensajes) {
   try {
-    // Si todos son stickers, respuesta directa sin IA
-    if (mensajes.every((m) => m.tipo === "sticker")) {
-      await enviarMensajeChunked(telefono, RESPUESTA_STICKER);
-      return;
-    }
-
     const textosFinales = [];
     let imagenBase64 = null;
     let imagenMime = null;
 
     // Procesar cada mensaje acumulado en orden
     for (const msg of mensajes) {
-      if (msg.tipo === "sticker") continue;
+      if (msg.tipo === "sticker") {
+        textosFinales.push("[El usuario envió un sticker]");
+        continue;
+      }
 
       if (msg.tipo === "audio") {
         try {
