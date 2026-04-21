@@ -164,8 +164,8 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
       promesas.push(crearMemoria(telefono, historialActualizado));
     }
 
-    if (lead?.calificacion != null) {
-      console.log(`[CRM] Lead ${lead.calificacion}: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
+    if (lead?.dni_contacto) {
+      console.log(`[CRM] Lead con DNI: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
       promesas.push(
         registrarOActualizarLead(telefono, lead).then(({ isNew, dniNuevo }) => {
           if (isNew) return derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD");

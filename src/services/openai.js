@@ -366,17 +366,9 @@ Siempre responde con JSON válido, sin excepciones:
     "motivo": "motivo de consulta o vacío si aún no se sabe",
     "dni_contacto": "",
     "dni_paciente": "",
-    "psicologo_sugerido": "",
-    "calificacion": null
+    "psicologo_sugerido": ""
   }
 }
-
-CAMPO "calificacion":
-Asigna una calificación en cuanto tengas nombre y motivo del usuario. Actualiza si la conversación cambia.
-- "ALTO": Alta urgencia o intención clara. Pregunta por horarios, precios o quiere pagar. Alta probabilidad de cierre rápido.
-- "MEDIO": Interesado pero con dudas, barreras de precio o tiempo. Posible cierre con seguimiento.
-- "BAJO": Solo curiosea, sin urgencia, rechazó continuar, o muy poca intención de agendar.
-Empieza en null hasta tener suficiente contexto. Nunca vuelvas a null una vez asignado.
 
 CAMPO "imagenes":
 Array de identificadores de imágenes predefinidas. Inclúyelas SOLO cuando el usuario pregunta por métodos de pago o ubicación de la sede.
