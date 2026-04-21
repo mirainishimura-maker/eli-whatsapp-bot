@@ -7,6 +7,7 @@ const {
   simularEscribiendo,
   enviarMensajeChunked,
   enviarImagenUrl,
+  enviarSticker,
   extraerTexto,
   extraerTelefono,
   extraerTipoMensaje,
@@ -18,6 +19,25 @@ const IMAGENES = {
   yape_qr:    { url: process.env.IMG_YAPE_QR,    caption: "📲 QR de pago — Yape (Gabriela Rentería)" },
   bcp_cuenta: { url: process.env.IMG_BCP_CUENTA, caption: "🏦 Datos de cuenta BCP — ITACA CONVERSEMOS" },
   mapa_piura: { url: process.env.IMG_MAPA_PIURA, caption: "📍 Sede Piura — Av. Bolognesi 582, of. 201" },
+};
+
+const STICKER_BASE = "https://raw.githubusercontent.com/mirainishimura-maker/eli-whatsapp-bot/main/assets/stickers";
+
+// Stickers de marca que Eli puede enviar según el contexto emocional
+const STICKERS = {
+  estoy_aqui:            `${STICKER_BASE}/estoy_aqui.png`,
+  estoy_para_ayudarte:   `${STICKER_BASE}/estoy_para_ayudarte.png`,
+  te_leo_con_carino:     `${STICKER_BASE}/te_leo_con_carino.png`,
+  un_dia_a_la_vez:       `${STICKER_BASE}/un_dia_a_la_vez.png`,
+  lo_estas_haciendo_bien:`${STICKER_BASE}/lo_estas_haciendo_bien.png`,
+  tu_espacio_te_espera:  `${STICKER_BASE}/tu_espacio_te_espera.png`,
+  gracias_por_confiar:   `${STICKER_BASE}/gracias_por_confiar.png`,
+  cita_agendada:         `${STICKER_BASE}/cita_agendada.png`,
+  fue_lindo_conversar:   `${STICKER_BASE}/fue_lindo_conversar.png`,
+  nos_vemos_pronto:      `${STICKER_BASE}/nos_vemos_pronto.png`,
+  fue_lindo_acompanarte: `${STICKER_BASE}/fue_lindo_acompanarte.png`,
+  gracias:               `${STICKER_BASE}/gracias.png`,
+  gracias_por_tu_mensaje:`${STICKER_BASE}/gracias_por_tu_mensaje.png`,
 };
 
 const { procesarConIA, transcribirAudio } = require("../services/openai");
@@ -103,7 +123,7 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     const presencia = iniciarPresencia(telefono);
 
     // ── 3. Procesar con IA ─────────────────────────────────────────────────
-    const { respuesta, lead, imagenes, historialActualizado } = await procesarConIA(
+    const { respuesta, lead, imagenes, stickers, historialActualizado } = await procesarConIA(
       historyPrevio,
       textoFinal,
       { imagenBase64, imagenMime }
@@ -154,6 +174,17 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
         promesas.push(enviarImagenUrl(telefono, img.url, img.caption));
       } else {
         console.warn(`[IMG] URL no configurada para imagen: "${imgId}"`);
+      }
+    }
+
+    const stickersEnviar = Array.isArray(stickers) ? stickers : [];
+    for (const stickerId of stickersEnviar) {
+      const url = STICKERS[stickerId];
+      if (url) {
+        console.log(`[STICKER] Enviando sticker "${stickerId}" a ${telefono}`);
+        promesas.push(enviarSticker(telefono, url));
+      } else {
+        console.warn(`[STICKER] ID no reconocido: "${stickerId}"`);
       }
     }
 

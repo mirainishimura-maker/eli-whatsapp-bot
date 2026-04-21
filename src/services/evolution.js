@@ -201,6 +201,19 @@ async function enviarImagenUrl(numero, url, caption = "") {
   });
 }
 
+/**
+ * Envía un sticker desde una URL al número destino.
+ * @param {string} numero - Número destino (ej: 51987654321)
+ * @param {string} url    - URL pública del sticker (PNG o WebP)
+ */
+async function enviarSticker(numero, url) {
+  const instancia = process.env.EVOLUTION_INSTANCE;
+  await evolutionClient.post(`/message/sendSticker/${instancia}`, {
+    number: numero,
+    sticker: url,
+  });
+}
+
 module.exports = {
   iniciarPresencia,
   presenciaInmediata,
@@ -208,6 +221,7 @@ module.exports = {
   enviarMensaje,
   enviarMensajeChunked,
   enviarImagenUrl,
+  enviarSticker,
   extraerTipoMensaje,
   extraerTexto,
   extraerTelefono,
