@@ -15,14 +15,16 @@ const {
 } = require("../services/evolution");
 
 const UBICACION_BASE = "https://raw.githubusercontent.com/mirainishimura-maker/eli-whatsapp-bot/main/assets/ubicacion";
+const ASSETS_BASE = "https://raw.githubusercontent.com/mirainishimura-maker/eli-whatsapp-bot/main/assets";
 
 // Imágenes predefinidas que Eli puede enviar al cliente
 const IMAGENES = {
-  yape_qr:      { url: process.env.IMG_YAPE_QR,    caption: "📲 QR de pago — Yape (Gabriela Rentería)" },
-  bcp_cuenta:   { url: process.env.IMG_BCP_CUENTA, caption: "🏦 Datos de cuenta BCP — ITACA CONVERSEMOS" },
-  mapa_piura:   { url: `${UBICACION_BASE}/mapa_piura.jpeg`,  caption: "📍 Sede Piura — Av. Bolognesi N° 582, 2do piso of. 201" },
-  foto_piura_1: { url: `${UBICACION_BASE}/foto_piura_1.jpeg`, caption: "🏢 Entrada del edificio — busca el 2do piso, of. 201" },
-  foto_piura_2: { url: `${UBICACION_BASE}/foto_piura_2.jpeg`, caption: "🏢 Fachada del edificio" },
+  yape_qr:        { url: process.env.IMG_YAPE_QR,    caption: "📲 QR de pago — Yape (Gabriela Rentería)" },
+  bcp_cuenta:     { url: process.env.IMG_BCP_CUENTA, caption: "🏦 Datos de cuenta BCP — ITACA CONVERSEMOS" },
+  mapa_piura:     { url: `${UBICACION_BASE}/mapa_piura.jpeg`,  caption: "📍 Sede Piura — Av. Bolognesi N° 582, 2do piso of. 201" },
+  foto_piura_1:   { url: `${UBICACION_BASE}/foto_piura_1.jpeg`, caption: "🏢 Entrada del edificio — busca el 2do piso, of. 201" },
+  foto_piura_2:   { url: `${UBICACION_BASE}/foto_piura_2.jpeg`, caption: "🏢 Fachada del edificio" },
+  que_es_consulta:{ url: `${ASSETS_BASE}/que_es_consulta.jpeg`, caption: "¿Qué es una primera consulta psicológica?" },
 };
 
 const STICKER_BASE = "https://raw.githubusercontent.com/mirainishimura-maker/eli-whatsapp-bot/main/assets/stickers";
