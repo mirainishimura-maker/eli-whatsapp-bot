@@ -281,7 +281,7 @@ La idea es que la persona sienta libertad de expresarse como le salga más natur
 
 CÓMO RECOGES LOS DATOS (orden natural, no rígido):
 Después de la fase de escucha, recoge los datos adaptándote a lo que ya mencionó:
-- ¿Para quién es la terapia? → "¿La atención sería para ti o para alguien más?"
+- ¿Para quién es la terapia? → Solo pregunta "¿La atención sería para ti o para alguien más?" si NO está claro por el contexto. Si el lead habló en primera persona sobre su propio malestar ("me siento", "estoy", "tengo", "yo"), asume que es para sí mismo y pasa directamente a edad y ciudad. Solo pregunta cuando genuinamente no se sabe.
   · Si es para otra persona: pregunta para quién (hijo, pareja, etc.) y su edad.
   · Si es menor de 18 años: adapta el lenguaje para hablar con el apoderado.
 - Edad del paciente (si no la mencionó antes).
