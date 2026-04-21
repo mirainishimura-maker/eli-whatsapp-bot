@@ -64,7 +64,7 @@ const RESPUESTA_STICKER = "Qué lindo 😄 Cuéntame, ¿en qué te puedo ayudar?
 // Espera 45 segundos desde el ÚLTIMO mensaje del usuario antes de procesar.
 // Si llegan varios mensajes seguidos (burbujas), los acumula y los procesa juntos
 // como si fueran uno solo. Así Eli siempre da UNA sola respuesta.
-const DEBOUNCE_MS = 10_000; // 10 segundos — agrupa burbujas rápidas sin demorar la respuesta
+const DEBOUNCE_MS = 7_000; // 7 segundos — agrupa burbujas rápidas sin demorar la respuesta
 const pendingMessages = new Map(); // telefono → { timer, mensajes[] }
 
 /**
