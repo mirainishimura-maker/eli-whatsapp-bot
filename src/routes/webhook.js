@@ -24,6 +24,8 @@ const IMAGENES = {
   mapa_piura:     { url: `${UBICACION_BASE}/mapa_piura.jpeg`,  caption: "📍 Sede Piura — Av. Bolognesi N° 582, 2do piso of. 201" },
   foto_piura_1:   { url: `${UBICACION_BASE}/foto_piura_1.jpeg`, caption: "🏢 Entrada del edificio — busca el 2do piso, of. 201" },
   foto_piura_2:   { url: `${UBICACION_BASE}/foto_piura_2.jpeg`, caption: "🏢 Fachada del edificio" },
+  mapa_lima:      { url: `${UBICACION_BASE}/mapa_lima.jpeg`,   caption: "📍 Sede Lima — Av. Arequipa 4130, of. 205, Miraflores" },
+  foto_lima:      { url: `${UBICACION_BASE}/foto_lima.jpeg`,   caption: "🏢 Edificio sede Lima — Av. Arequipa 4130, Miraflores" },
   que_es_consulta:{ url: `${ASSETS_BASE}/que_es_consulta.jpeg`, caption: "¿Qué es una primera consulta psicológica?" },
 };
 
