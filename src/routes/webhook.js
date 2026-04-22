@@ -144,11 +144,14 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     if (crisis.esCrisis) {
       mensajeParaIA = `⚠️ ALERTA CRISIS (nivel: ${crisis.nivel}). Señales detectadas: ${crisis.senales.join(", ")}. Activa el PROTOCOLO DE CRISIS inmediatamente.\n\nMensaje del usuario: ${textoFinal}`;
     } else if (contexto.etapa !== "apertura") {
-      const datosOk  = contexto.datos_disponibles.join(", ") || "ninguno";
-      const datosFalta = contexto.datos_faltantes.join(", ")  || "ninguno";
-      const nota     = contexto.nota ? ` ${contexto.nota}` : "";
+      const datosOk    = contexto.datos_disponibles.join(", ") || "ninguno";
+      const datosFalta = contexto.datos_faltantes.join(", ")   || "ninguno";
+      const nota       = contexto.nota ? ` ${contexto.nota}` : "";
+      const precioBis  = contexto.precio_preguntado_antes
+        ? " SEGUNDA VEZ que pregunta el precio — dalo ya (S/50, primera consulta)."
+        : "";
       mensajeParaIA =
-        `[CONTEXTO: etapa=${contexto.etapa} | recogido: ${datosOk} | falta: ${datosFalta}.${nota}]\n\n${textoFinal}`;
+        `[CONTEXTO: etapa=${contexto.etapa} | recogido: ${datosOk} | falta: ${datosFalta}.${precioBis}${nota}]\n\n${textoFinal}`;
     } else {
       mensajeParaIA = textoFinal;
     }

@@ -13,11 +13,16 @@ ETAPAS:
 DATOS DEL LEAD (marca los que ya están confirmados en la conversación):
 nombre_contacto, para_quien, edad_paciente, ciudad, motivo, dni_contacto, dni_paciente
 
+DETECCIÓN DE PRECIO:
+Revisa si el usuario preguntó por el precio o costo en algún mensaje anterior (no solo el último).
+- precio_preguntado_antes: true si ya lo preguntó antes del mensaje actual, false si no o si es la primera vez que pregunta.
+
 Responde SOLO con JSON válido, sin texto adicional, sin markdown:
 {
   "etapa": "calificacion",
   "datos_disponibles": ["nombre_contacto", "ciudad", "motivo"],
   "datos_faltantes": ["edad_paciente", "dni_contacto"],
+  "precio_preguntado_antes": false,
   "nota": "Una oración con el contexto clave que ayude a responder mejor este mensaje."
 }`;
 
