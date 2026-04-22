@@ -1,3 +1,4 @@
+const path = require("path");
 const express = require("express");
 const webhookRouter = require("./routes/webhook");
 const panelRouter = require("./routes/panel");
@@ -12,6 +13,9 @@ iniciarFollowup();
 // Parsear JSON y formularios HTML
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Servir archivos estáticos (imágenes de followup, bienvenida, etc.)
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Ruta de salud para verificar que el servidor está activo
 app.get("/health", (req, res) => {

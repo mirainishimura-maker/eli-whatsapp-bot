@@ -3,16 +3,18 @@ const { enviarMensaje, enviarImagenUrl } = require("./evolution");
 
 const INTERVALO_MS = 15 * 60 * 1000; // revisar cada 15 min
 
+// Las imágenes se sirven desde /public/followup/ en el mismo servidor del bot.
+// Solo necesitas configurar BOT_URL en .env (ej: https://eli.itacaconversemos.com)
+function imgUrl(nombre) {
+  const base = (process.env.BOT_URL || "").replace(/\/$/, "");
+  return `${base}/followup/${nombre}`;
+}
+
 /**
  * Secuencia de recontacto de 8 pasos.
- *
- * delayMs: tiempo mínimo desde ultima_actividad para disparar este paso.
- *          Cada paso actualiza ultima_actividad, así que el delay es relativo
- *          al paso anterior (o a la última actividad real del usuario).
- *
- * Cronología aproximada desde que el lead deja de responder:
- *   Paso 0 → +1h   (texto, sin imagen)
- *   Paso 1 → +3h   (texto, sin imagen)
+ * Cronología desde que el lead deja de responder:
+ *   Paso 0 → +1h   (solo texto)
+ *   Paso 1 → +3h   (solo texto)
  *   Paso 2 → +1d   (imagen 1)
  *   Paso 3 → +3d   (imagen 2)
  *   Paso 4 → +5d   (imagen 8)
@@ -22,50 +24,50 @@ const INTERVALO_MS = 15 * 60 * 1000; // revisar cada 15 min
  */
 const SECUENCIA = [
   {
-    delayMs: 1 * 60 * 60 * 1000, // 1h desde última actividad real
+    delayMs: 1 * 60 * 60 * 1000,
     imagen: null,
     texto: (nombre) =>
       `${nombre ? `Hola ${nombre} 🫂` : "Hola 🫂"} Pensamos en ti. Hay cosas que se sienten más ligeras cuando hay alguien con quien hablarlas. Estoy aquí para ayudarte, ¿conversamos? ¿Tienes dudas para empezar?`,
   },
   {
-    delayMs: 2 * 60 * 60 * 1000, // 2h desde paso 0 → total ~3h
+    delayMs: 2 * 60 * 60 * 1000,
     imagen: null,
     texto: () =>
       `No tienes que estar seguro/a de nada para empezar. La primera sesión es precisamente para eso: explorar, sin presión. ¿Hablamos? 🩵`,
   },
   {
-    delayMs: 21 * 60 * 60 * 1000, // 21h desde paso 1 → total ~1 día
-    imagen: process.env.FOLLOWUP_IMG_1,
+    delayMs: 21 * 60 * 60 * 1000,
+    imagen: () => imgUrl("followup-1.jpg"),
     texto: () =>
       `Hola 👋 Solo pasé a preguntarte esto. A veces la vida nos absorbe tanto que lo más importante lo dejamos para "después"... y ese después nunca llega. Si en algún momento sentiste que necesitabas un espacio para ti, aquí seguimos 🩵 ¿Seguimos donde lo dejamos?`,
   },
   {
-    delayMs: 48 * 60 * 60 * 1000, // 48h desde paso 2 → total ~3 días
-    imagen: process.env.FOLLOWUP_IMG_2,
+    delayMs: 48 * 60 * 60 * 1000,
+    imagen: () => imgUrl("followup-2.jpg"),
     texto: () =>
       `¿Te suena familiar? 😅 El momento perfecto nunca llega solo. Pero tú sí puedes crearlo. Escríbenos y buscamos juntos el espacio que funcione para ti. 🩵`,
   },
   {
-    delayMs: 48 * 60 * 60 * 1000, // 48h desde paso 3 → total ~5 días
-    imagen: process.env.FOLLOWUP_IMG_8,
+    delayMs: 48 * 60 * 60 * 1000,
+    imagen: () => imgUrl("followup-8.jpg"),
     texto: () =>
       `Estas preguntas no son para alarmarte. Son para recordarte que mereces entenderte mejor. Podemos ayudarte en eso. 🫂🩵`,
   },
   {
-    delayMs: 48 * 60 * 60 * 1000, // 48h desde paso 4 → total ~7 días
-    imagen: process.env.FOLLOWUP_IMG_5,
+    delayMs: 48 * 60 * 60 * 1000,
+    imagen: () => imgUrl("followup-5.jpg"),
     texto: () =>
       `Ese primer paso ya lo diste cuando nos contactaste. No dejes que quede a medias. Aún tienes tiempo de agendarte. Escríbenos 💬🩵`,
   },
   {
-    delayMs: 72 * 60 * 60 * 1000, // 72h desde paso 5 → total ~10 días
-    imagen: process.env.FOLLOWUP_IMG_9,
+    delayMs: 72 * 60 * 60 * 1000,
+    imagen: () => imgUrl("followup-9.jpg"),
     texto: () =>
       `Hace un tiempo nos contactaste y algo te trajo hasta aquí. Ese algo sigue siendo válido. Cuando sientas que es momento, la puerta está abierta. 🩵💬`,
   },
   {
-    delayMs: 120 * 60 * 60 * 1000, // 120h desde paso 6 → total ~15 días
-    imagen: process.env.FOLLOWUP_IMG_10,
+    delayMs: 120 * 60 * 60 * 1000,
+    imagen: () => imgUrl("followup-10.jpg"),
     texto: () =>
       `Queremos recordarte que seguimos aquí, con espacio para ti. Si quieres dar el paso, es tan sencillo como responder este mensaje. ¿Conversamos? 💬🩵`,
   },
@@ -102,7 +104,7 @@ async function verificarYEnviarFollowups() {
 
       try {
         if (step.imagen) {
-          await enviarImagenUrl(telefono, step.imagen, step.texto(nombre));
+          await enviarImagenUrl(telefono, step.imagen(), step.texto(nombre));
         } else {
           await enviarMensaje(telefono, step.texto(nombre));
         }
