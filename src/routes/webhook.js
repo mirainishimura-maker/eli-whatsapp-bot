@@ -51,6 +51,7 @@ const STICKERS = {
 const { procesarConIA, transcribirAudio } = require("../services/openai");
 const { derivarLeadAAsistente } = require("../services/routing");
 const { detectarCrisis } = require("../agents/detectarCrisis");
+const { analizarContexto } = require("../agents/analizarContexto");
 const {
   buscarMemoria,
   crearMemoria,
@@ -117,24 +118,40 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     const textoFinal = textosFinales.join("\n");
     if (!textoFinal) return;
 
-    // ── 1. Recuperar memoria + detectar crisis en paralelo ─────────────────
-    const [memoriaExistente, crisis] = await Promise.all([
-      buscarMemoria(telefono),
-      detectarCrisis(textoFinal),
-    ]);
+    // ── 1. Memoria + crisis en paralelo; contexto arranca al tener el historial ─
+    const memoriaPromise = buscarMemoria(telefono);
+    const crisisPromise  = detectarCrisis(textoFinal);
+
+    const memoriaExistente = await memoriaPromise;
+    const esPrimerContacto = !memoriaExistente;
+    const historyPrevio    = memoriaExistente ? memoriaExistente.history : [];
+
+    // analizarContexto necesita el historial → arranca en cuanto lo tenemos,
+    // en paralelo con lo que quede de crisisPromise
+    const contextoPromise = analizarContexto(historyPrevio);
+
+    const [crisis, contexto] = await Promise.all([crisisPromise, contextoPromise]);
 
     if (crisis.esCrisis) {
       console.warn(`[CRISIS] ${telefono} — nivel:${crisis.nivel} señales:${crisis.senales.join(", ")}`);
     }
+    console.log(`[CONTEXTO] ${telefono} — etapa:${contexto.etapa} | falta:${contexto.datos_faltantes.join(", ") || "nada"}`);
 
-    const esPrimerContacto = !memoriaExistente;
-    const historyPrevio = memoriaExistente ? memoriaExistente.history : [];
-
-    // Si hay crisis, inyectamos una alerta al inicio del mensaje para que
-    // GPT-4o active el protocolo de crisis del SYSTEM_PROMPT sin falta
-    const mensajeParaIA = crisis.esCrisis
-      ? `⚠️ ALERTA CRISIS (nivel: ${crisis.nivel}). Señales detectadas: ${crisis.senales.join(", ")}. Activa el PROTOCOLO DE CRISIS inmediatamente.\n\nMensaje del usuario: ${textoFinal}`
-      : textoFinal;
+    // Construir mensaje para GPT-4o
+    // — Crisis tiene prioridad absoluta (omite el contexto de etapa)
+    // — Si no hay crisis, inyectamos la etapa y datos como pista para GPT-4o
+    let mensajeParaIA;
+    if (crisis.esCrisis) {
+      mensajeParaIA = `⚠️ ALERTA CRISIS (nivel: ${crisis.nivel}). Señales detectadas: ${crisis.senales.join(", ")}. Activa el PROTOCOLO DE CRISIS inmediatamente.\n\nMensaje del usuario: ${textoFinal}`;
+    } else if (contexto.etapa !== "apertura") {
+      const datosOk  = contexto.datos_disponibles.join(", ") || "ninguno";
+      const datosFalta = contexto.datos_faltantes.join(", ")  || "ninguno";
+      const nota     = contexto.nota ? ` ${contexto.nota}` : "";
+      mensajeParaIA =
+        `[CONTEXTO: etapa=${contexto.etapa} | recogido: ${datosOk} | falta: ${datosFalta}.${nota}]\n\n${textoFinal}`;
+    } else {
+      mensajeParaIA = textoFinal;
+    }
 
     // ── 2. Arrancar "escribiendo..." antes de llamar a la IA ──────────────
     // El loop se renueva cada 5s automáticamente hasta que llamemos detener()
