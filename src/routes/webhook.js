@@ -52,6 +52,7 @@ const { procesarConIA, transcribirAudio } = require("../services/openai");
 const { derivarLeadAAsistente } = require("../services/routing");
 const { detectarCrisis } = require("../agents/detectarCrisis");
 const { analizarContexto } = require("../agents/analizarContexto");
+const { filtrarTopico } = require("../agents/filtrarTopico");
 const {
   buscarMemoria,
   crearMemoria,
@@ -117,6 +118,16 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
 
     const textoFinal = textosFinales.join("\n");
     if (!textoFinal) return;
+
+    // ── 0. Filtro de tópico — bloquea spam y número equivocado antes de todo ──
+    const filtro = await filtrarTopico(textoFinal);
+    if (!filtro.pasar) {
+      console.log(`[FILTRO] ${telefono} bloqueado — tipo:${filtro.tipo}`);
+      if (filtro.respuesta) {
+        await enviarMensajeChunked(telefono, filtro.respuesta);
+      }
+      return;
+    }
 
     // ── 1. Memoria + crisis en paralelo; contexto arranca al tener el historial ─
     const memoriaPromise = buscarMemoria(telefono);
