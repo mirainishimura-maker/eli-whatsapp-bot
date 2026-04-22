@@ -27,29 +27,43 @@ function iniciarPresencia(numero) {
   const instancia = process.env.EVOLUTION_INSTANCE;
   let activo = true;
 
-  // Evolution API a veces requiere el JID completo para presencia
   const jid = numero.includes("@") ? numero : `${numero}@s.whatsapp.net`;
 
-  const tick = () => {
-    if (!activo) return;
+  const enviarEstado = (presence, delay) =>
     evolutionClient
       .post(`/chat/sendPresence/${instancia}`, {
         number: jid,
-        options: { presence: "composing", delay: 6000 },
+        options: { presence, delay },
       })
-      .then(() => {
-        console.log(`[PRESENCE] ✓ typing enviado a ${numero}`);
-      })
-      .catch((e) => {
-        console.warn(
-          `[PRESENCE] ✗ error para ${numero}:`,
-          e.response?.status,
-          JSON.stringify(e.response?.data) || e.message
-        );
-      })
-      .finally(() => {
-        if (activo) setTimeout(tick, 5000);
+      .catch((e) =>
+        console.warn(`[PRESENCE] ✗ ${numero}:`, e.response?.status, e.message)
+      );
+
+  const tick = () => {
+    if (!activo) return;
+
+    // 25% de las veces: pausa breve (deja de escribir y retoma) para parecer humana
+    const hacerPausa = Math.random() < 0.25;
+
+    if (hacerPausa) {
+      enviarEstado("paused", 1000).finally(() => {
+        if (!activo) return;
+        const pausaMs = 1500 + Math.random() * 2500; // 1.5s – 4s de pausa
+        setTimeout(() => {
+          if (!activo) return;
+          enviarEstado("composing", 6000).finally(() => {
+            if (activo) setTimeout(tick, 5000);
+          });
+        }, pausaMs);
       });
+    } else {
+      enviarEstado("composing", 6000).finally(() => {
+        if (activo) {
+          console.log(`[PRESENCE] ✓ typing ${numero}`);
+          setTimeout(tick, 5000);
+        }
+      });
+    }
   };
 
   tick();

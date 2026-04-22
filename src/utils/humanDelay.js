@@ -7,9 +7,9 @@
  *   - Mínimo total: 10 s  |  Máximo total: 90 s
  */
 
-const MIN_MS = 10_000;
+const MIN_MS = 8_000;
 const MAX_MS = 90_000;
-const CHARS_PER_SECOND = 45;
+const CHARS_PER_SECOND = 35;
 
 /**
  * Devuelve los milisegundos que debe durar el indicador de "escribiendo"
@@ -20,7 +20,7 @@ const CHARS_PER_SECOND = 45;
  */
 function calcularDemora(textoRespuesta) {
   // Tiempo de lectura del mensaje entrante (pausa inicial)
-  const lecturaMs = aleatorio(2000, 5000);
+  const lecturaMs = aleatorio(3000, 7000);
 
   // Tiempo de escritura basado en longitud de la respuesta
   const chars = textoRespuesta.length;
