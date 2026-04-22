@@ -54,6 +54,7 @@ const { detectarCrisis } = require("../agents/detectarCrisis");
 const { analizarContexto } = require("../agents/analizarContexto");
 const { filtrarTopico } = require("../agents/filtrarTopico");
 const { resumirSiNecesario } = require("../agents/resumirConversacion");
+const { registrarConversacion } = require("../agents/insightsAgent");
 const {
   buscarMemoria,
   crearMemoria,
@@ -124,6 +125,7 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     const filtro = await filtrarTopico(textoFinal);
     if (!filtro.pasar) {
       console.log(`[FILTRO] ${telefono} bloqueado — tipo:${filtro.tipo}`);
+      registrarConversacion({ telefono, esFiltrado: true, tipoFiltro: filtro.tipo, ciudad: null, motivo: null, tieneDNI: false, esCrisis: false, etapa: null });
       if (filtro.respuesta) {
         await enviarMensajeChunked(telefono, filtro.respuesta);
       }
@@ -241,6 +243,17 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     }
 
     await Promise.all(promesas);
+
+    // ── 6. Registrar para el resumen diario ───────────────────────────────
+    registrarConversacion({
+      telefono,
+      ciudad:   lead?.ciudad   || null,
+      motivo:   lead?.motivo   || null,
+      tieneDNI: !!(lead?.dni_contacto),
+      esCrisis: crisis.esCrisis,
+      etapa:    contexto.etapa,
+      esFiltrado: false,
+    });
   } catch (err) {
     console.error(`[ERROR] Fallo procesando mensajes de ${telefono}:`, err.message);
     if (err.response) {
