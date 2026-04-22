@@ -78,6 +78,7 @@ async function registrarOActualizarLead(telefono, lead) {
     "PSICOLOGO ASIGNADO":  lead.psicologo_sugerido || "",
     "ESTADO":              lead.calificacion       || "",
     "ultima_actividad":    ahora,
+    "PASO_FOLLOWUP":       0, // resetear al recibir mensaje real del usuario
   };
 
   // DNI va en notas adicionales (no hay campo específico en la tabla)
@@ -108,38 +109,29 @@ async function registrarOActualizarLead(telefono, lead) {
 }
 
 /**
- * Actualiza solo ultima_actividad de un lead (para el sistema de recontacto).
- * Se llama después de enviar el seguimiento automático para no re-dispararlo.
+ * Retorna todos los leads activos que aún no completaron la secuencia de followup.
+ * El filtrado por tiempo y paso lo hace followup.js.
  */
-async function actualizarUltimaActividad(recordId) {
-  await airtableClient.patch(`/LEADS/${recordId}`, {
-    fields: { ultima_actividad: new Date().toISOString() },
-  });
+async function obtenerLeadsEnFollowup() {
+  const formula = encodeURIComponent(
+    `AND({ESTADO} != 'BAJO', {ESTADO} != '')`
+  );
+  const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
+  return response.data.records.filter(
+    (r) => (r.fields["PASO_FOLLOWUP"] ?? 0) < 8
+  );
 }
 
 /**
- * Retorna leads "fríos": sin respuesta entre 60 y 90 minutos,
- * con calificación activa y nombre conocido.
- * El filtrado de tiempo se hace en JavaScript para evitar problemas
- * con fórmulas de fecha en la API de Airtable.
+ * Avanza el paso de followup e inicializa ultima_actividad para calcular
+ * el delay del siguiente paso a partir de este momento.
  */
-async function obtenerLeadsFrios() {
-  // Traer solo leads activos (no BAJO, con nombre) que tengan ultima_actividad
-  const formula = encodeURIComponent(
-    `AND({ESTADO} != 'BAJO', {ESTADO} != '', {NOMBRES} != '')`
-  );
-  const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
-  const records = response.data.records;
-
-  const ahora = Date.now();
-  const UMBRAL_MIN_MS = 60 * 60 * 1000; // 60 minutos
-  const UMBRAL_MAX_MS = 90 * 60 * 1000; // 90 minutos
-
-  return records.filter((record) => {
-    const ultimaActividad = record.fields.ultima_actividad;
-    if (!ultimaActividad) return false;
-    const diff = ahora - new Date(ultimaActividad).getTime();
-    return diff >= UMBRAL_MIN_MS && diff <= UMBRAL_MAX_MS;
+async function actualizarPasoFollowup(recordId, nuevoPaso) {
+  await airtableClient.patch(`/LEADS/${recordId}`, {
+    fields: {
+      "PASO_FOLLOWUP":    nuevoPaso,
+      "ultima_actividad": new Date().toISOString(),
+    },
   });
 }
 
@@ -148,6 +140,6 @@ module.exports = {
   crearMemoria,
   actualizarMemoria,
   registrarOActualizarLead,
-  actualizarUltimaActividad,
-  obtenerLeadsFrios,
+  obtenerLeadsEnFollowup,
+  actualizarPasoFollowup,
 };
