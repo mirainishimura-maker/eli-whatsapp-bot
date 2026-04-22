@@ -50,6 +50,7 @@ const STICKERS = {
 
 const { procesarConIA, transcribirAudio } = require("../services/openai");
 const { derivarLeadAAsistente } = require("../services/routing");
+const { detectarCrisis } = require("../agents/detectarCrisis");
 const {
   buscarMemoria,
   crearMemoria,
@@ -116,10 +117,24 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     const textoFinal = textosFinales.join("\n");
     if (!textoFinal) return;
 
-    // ── 1. Recuperar memoria ───────────────────────────────────────────────
-    const memoriaExistente = await buscarMemoria(telefono);
+    // ── 1. Recuperar memoria + detectar crisis en paralelo ─────────────────
+    const [memoriaExistente, crisis] = await Promise.all([
+      buscarMemoria(telefono),
+      detectarCrisis(textoFinal),
+    ]);
+
+    if (crisis.esCrisis) {
+      console.warn(`[CRISIS] ${telefono} — nivel:${crisis.nivel} señales:${crisis.senales.join(", ")}`);
+    }
+
     const esPrimerContacto = !memoriaExistente;
     const historyPrevio = memoriaExistente ? memoriaExistente.history : [];
+
+    // Si hay crisis, inyectamos una alerta al inicio del mensaje para que
+    // GPT-4o active el protocolo de crisis del SYSTEM_PROMPT sin falta
+    const mensajeParaIA = crisis.esCrisis
+      ? `⚠️ ALERTA CRISIS (nivel: ${crisis.nivel}). Señales detectadas: ${crisis.senales.join(", ")}. Activa el PROTOCOLO DE CRISIS inmediatamente.\n\nMensaje del usuario: ${textoFinal}`
+      : textoFinal;
 
     // ── 2. Arrancar "escribiendo..." antes de llamar a la IA ──────────────
     // El loop se renueva cada 5s automáticamente hasta que llamemos detener()
@@ -128,7 +143,7 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     // ── 3. Procesar con IA ─────────────────────────────────────────────────
     const { respuesta, lead, imagenes, stickers, historialActualizado } = await procesarConIA(
       historyPrevio,
-      textoFinal,
+      mensajeParaIA,
       { imagenBase64, imagenMime }
     );
 
