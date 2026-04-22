@@ -121,24 +121,28 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     const textoFinal = textosFinales.join("\n");
     if (!textoFinal) return;
 
-    // ── 0. Filtro de tópico — bloquea spam y número equivocado antes de todo ──
-    const filtro = await filtrarTopico(textoFinal);
-    if (!filtro.pasar) {
-      console.log(`[FILTRO] ${telefono} bloqueado — tipo:${filtro.tipo}`);
-      registrarConversacion({ telefono, esFiltrado: true, tipoFiltro: filtro.tipo, ciudad: null, motivo: null, tieneDNI: false, esCrisis: false, etapa: null });
-      if (filtro.respuesta) {
-        await enviarMensajeChunked(telefono, filtro.respuesta);
-      }
-      return;
-    }
-
-    // ── 1. Memoria + crisis en paralelo; contexto arranca al tener el historial ─
+    // ── 0+1. Filtro + memoria en paralelo ────────────────────────────────────
+    // El filtro solo aplica a contactos nuevos — si ya hay historial es un
+    // usuario activo y nunca lo bloqueamos (evita falsos positivos con nombres,
+    // respuestas cortas, etc.)
+    const filtroPromise  = filtrarTopico(textoFinal);
     const memoriaPromise = buscarMemoria(telefono);
     const crisisPromise  = detectarCrisis(textoFinal);
 
     const memoriaExistente = await memoriaPromise;
     const esPrimerContacto = !memoriaExistente;
     const historyPrevio    = memoriaExistente ? memoriaExistente.history : [];
+
+    // Aplicar filtro SOLO si es primer contacto (sin historial previo)
+    if (esPrimerContacto) {
+      const filtro = await filtroPromise;
+      if (!filtro.pasar) {
+        console.log(`[FILTRO] ${telefono} bloqueado — tipo:${filtro.tipo}`);
+        registrarConversacion({ telefono, esFiltrado: true, tipoFiltro: filtro.tipo, ciudad: null, motivo: null, tieneDNI: false, esCrisis: false, etapa: null });
+        if (filtro.respuesta) await enviarMensajeChunked(telefono, filtro.respuesta);
+        return;
+      }
+    }
 
     // analizarContexto necesita el historial → arranca en cuanto lo tenemos,
     // en paralelo con lo que quede de crisisPromise
