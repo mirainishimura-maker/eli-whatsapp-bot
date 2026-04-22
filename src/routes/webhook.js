@@ -53,6 +53,7 @@ const { derivarLeadAAsistente } = require("../services/routing");
 const { detectarCrisis } = require("../agents/detectarCrisis");
 const { analizarContexto } = require("../agents/analizarContexto");
 const { filtrarTopico } = require("../agents/filtrarTopico");
+const { resumirSiNecesario } = require("../agents/resumirConversacion");
 const {
   buscarMemoria,
   crearMemoria,
@@ -197,12 +198,14 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     await enviarMensajeChunked(telefono, respuesta);
 
     // ── 5. Persistencia y routing (en paralelo) ────────────────────────────
+    const historialParaGuardar = await resumirSiNecesario(historialActualizado);
+
     const promesas = [];
 
     if (memoriaExistente) {
-      promesas.push(actualizarMemoria(memoriaExistente.recordId, historialActualizado));
+      promesas.push(actualizarMemoria(memoriaExistente.recordId, historialParaGuardar));
     } else {
-      promesas.push(crearMemoria(telefono, historialActualizado));
+      promesas.push(crearMemoria(telefono, historialParaGuardar));
     }
 
     if (lead?.dni_contacto) {
