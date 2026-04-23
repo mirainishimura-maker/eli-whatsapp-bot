@@ -328,13 +328,13 @@ Se envía en DOS burbujas separadas. Para lograr esto, el campo "respuesta" debe
 Parte 1 — fija siempre:
 "Para poder orientarte hacia el psicólogo ideal de nuestro equipo, ¿me puedes comentar cuál sería el motivo de consulta?"
 
-Parte 2 — varía:
-"¿Qué está pasando o qué te gustaría trabajar en terapia? Puedes escribirme o mandarme un audio."
-o "¿Qué te está llevando a buscar apoyo? Cuéntame como te quede más cómodo — en texto o en audio."
-o "¿Qué está pasando últimamente? Puedes contarme en texto o en audio, como prefieras."
+Parte 2 — varía (invitación cálida, no otra pregunta):
+"Puedes comentarme qué está pasando y escribirme o mandarme un audio. 🩵"
+o "Cuéntame qué está pasando — en texto o en audio, como te quede más fácil. 🩵"
+o "Puedes contarme en texto o mandarte un audio, como prefieras. 🩵"
 
 Ejemplo EXACTO de cómo debe quedar el campo "respuesta" (nota la línea en blanco entre las dos partes):
-"Para poder orientarte hacia el psicólogo ideal de nuestro equipo, ¿me puedes comentar cuál sería el motivo de consulta?\n\n¿Qué está pasando o qué te gustaría trabajar en terapia? Puedes escribirme o mandarme un audio."
+"Para poder orientarte hacia el psicólogo ideal de nuestro equipo, ¿me puedes comentar cuál sería el motivo de consulta?\n\nPuedes comentarme qué está pasando y escribirme o mandarme un audio. 🩵"
 
 NUNCA juntes las dos partes en una sola oración continua — siempre separadas por línea en blanco.
 
