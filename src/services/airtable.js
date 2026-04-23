@@ -78,7 +78,7 @@ async function registrarOActualizarLead(telefono, lead) {
     "PSICOLOGO ASIGNADO":  lead.psicologo_sugerido || "",
     "ESTADO":              lead.calificacion       || "NUEVO",
     "ultima_actividad":    ahora,
-    "PASO_FOLLOWUP":       0, // resetear al recibir mensaje real del usuario
+    "PASO_FOLLOWUP":       lead.dni_contacto ? 8 : 0, // 8 = completo (ya fue derivado), 0 = reiniciar
   };
 
   // DNI va en notas adicionales (no hay campo específico en la tabla)
