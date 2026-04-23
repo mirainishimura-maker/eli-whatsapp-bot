@@ -266,22 +266,19 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
       promesas.push(crearMemoria(telefono, historialParaGuardar));
     }
 
-    // Airtable — desde que hay motivo para que el followup funcione
+    // Airtable — una sola llamada, siempre que haya motivo
     if (lead?.motivo) {
-      console.log(`[CRM] Lead con motivo: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
-      promesas.push(registrarOActualizarLead(telefono, lead));
-    }
-
-    // Google Sheets + notificación a asistente — solo cuando hay DNI
-    if (lead?.dni_contacto) {
-      console.log(`[CRM] Lead con DNI: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
+      console.log(`[CRM] Lead: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
       promesas.push(
         registrarOActualizarLead(telefono, lead).then(({ isNew, dniNuevo }) => {
-          if (isNew) return derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD", resumenConversacion);
-          if (dniNuevo) return derivarLeadAAsistente(telefono, lead, "LISTO_PARA_COORDINAR", resumenConversacion);
+          // Google Sheets + notificación — solo cuando hay DNI
+          if (lead.dni_contacto) {
+            registrarLeadEnSheets(telefono, lead, resumenConversacion);
+            if (isNew) return derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD", resumenConversacion);
+            if (dniNuevo) return derivarLeadAAsistente(telefono, lead, "LISTO_PARA_COORDINAR", resumenConversacion);
+          }
         })
       );
-      promesas.push(registrarLeadEnSheets(telefono, lead, resumenConversacion));
     }
 
     const stickersEnviar = Array.isArray(stickers) ? stickers : [];
