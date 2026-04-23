@@ -33,32 +33,11 @@ async function registrarLeadEnSheets(telefono, lead, notas = "") {
   };
 
   try {
-    await postConRedirect(url, payload);
+    const encodedPayload = encodeURIComponent(JSON.stringify(payload));
+    await axios.get(`${url}?payload=${encodedPayload}`, { timeout: 25000 });
     console.log(`[SHEETS] Lead registrado — ${telefono} (${lead.ciudad || "?"})`);
   } catch (err) {
     console.error(`[SHEETS] Error al registrar lead:`, err.message);
-  }
-}
-
-// Google Apps Script hace un redirect 302 en el primer POST.
-// Axios convierte el POST a GET en el redirect — esto lo evitamos siguiendo manualmente.
-async function postConRedirect(url, data) {
-  try {
-    return await axios.post(url, data, {
-      headers: { "Content-Type": "application/json" },
-      maxRedirects: 0,
-      validateStatus: (s) => s < 400,
-      timeout: 10000,
-    });
-  } catch (err) {
-    if (err.response?.status === 302 || err.response?.status === 301) {
-      const redirectUrl = err.response.headers.location;
-      return await axios.post(redirectUrl, data, {
-        headers: { "Content-Type": "application/json" },
-        timeout: 10000,
-      });
-    }
-    throw err;
   }
 }
 
