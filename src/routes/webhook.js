@@ -26,7 +26,7 @@ const IMAGENES = {
   foto_piura_2:   { url: `${UBICACION_BASE}/foto_piura_2.jpeg`, caption: "🏢 Fachada del edificio" },
   mapa_lima:      { url: `${UBICACION_BASE}/mapa_lima.jpeg`,   caption: "📍 Sede Lima — Av. Arequipa 4130, of. 205, Miraflores" },
   foto_lima:      { url: `${UBICACION_BASE}/foto_lima.jpeg`,   caption: "🏢 Edificio sede Lima — Av. Arequipa 4130, Miraflores" },
-  que_es_consulta:{ url: `${ASSETS_BASE}/que_es_consulta.jpeg`, caption: "¿Qué es una primera consulta psicológica?" },
+  que_es_consulta:{ url: `${ASSETS_BASE}/que_es_consulta.jpeg`, caption: "" },
 };
 
 const STICKER_BASE = "https://raw.githubusercontent.com/mirainishimura-maker/eli-whatsapp-bot/main/assets/stickers";
