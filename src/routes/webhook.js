@@ -271,11 +271,12 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
       console.log(`[CRM] Lead: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
       promesas.push(
         registrarOActualizarLead(telefono, lead).then(({ isNew, dniNuevo }) => {
-          // Google Sheets + notificación — solo cuando hay DNI
+          if (isNew) {
+            derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD", resumenConversacion);
+          }
           if (lead.dni_contacto) {
             registrarLeadEnSheets(telefono, lead, resumenConversacion);
-            if (isNew) return derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD", resumenConversacion);
-            if (dniNuevo) return derivarLeadAAsistente(telefono, lead, "LISTO_PARA_COORDINAR", resumenConversacion);
+            if (dniNuevo) derivarLeadAAsistente(telefono, lead, "LISTO_PARA_COORDINAR", resumenConversacion);
           }
         })
       );
