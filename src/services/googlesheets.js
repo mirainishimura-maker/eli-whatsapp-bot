@@ -23,13 +23,10 @@ async function registrarLeadEnSheets(telefono, lead, notas = "") {
     paciente:  (lead.nombre_paciente && lead.nombre_paciente !== lead.nombre_contacto)
                  ? lead.nombre_paciente : "",
     edad:      lead.edad_paciente      ? String(lead.edad_paciente) : "",
-    motivo:    lead.motivo             || "",
     distrito:  lead.ciudad             || "",
     dni:       dniParts.join(" | "),
     psicologo: lead.psicologo_sugerido || "",
-    modalidad: lead.para_quien         || "",
-    estado:    lead.calificacion       || "NUEVO",
-    notas,
+    notas:     [lead.motivo, notas].filter(Boolean).join(" — "),
   };
 
   try {
