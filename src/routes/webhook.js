@@ -188,8 +188,11 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
       const precioBis  = contexto.precio_preguntado_antes
         ? " SEGUNDA VEZ que pregunta el precio — dalo ya (S/50, primera consulta)."
         : "";
+      const sinMotivo = contexto.datos_faltantes.includes("motivo")
+        ? " ⚠️ NO menciones precio ni info de la primera consulta todavía — el motivo aún no fue dado."
+        : "";
       mensajeParaIA =
-        `[CONTEXTO: etapa=${contexto.etapa} | recogido: ${datosOk} | falta: ${datosFalta}.${precioBis}${nota}]\n\n${textoFinal}`;
+        `[CONTEXTO: etapa=${contexto.etapa} | recogido: ${datosOk} | falta: ${datosFalta}.${precioBis}${sinMotivo}${nota}]\n\n${textoFinal}`;
     } else {
       mensajeParaIA = textoFinal;
     }
