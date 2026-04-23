@@ -64,11 +64,27 @@ const {
 const { calcularDemora, esperar } = require("../utils/humanDelay");
 
 // ── DEBOUNCE ────────────────────────────────────────────────────────────────
-// Espera 45 segundos desde el ÚLTIMO mensaje del usuario antes de procesar.
+// Espera 15s desde el ÚLTIMO mensaje del usuario antes de procesar.
 // Si llegan varios mensajes seguidos (burbujas), los acumula y los procesa juntos
 // como si fueran uno solo. Así Eli siempre da UNA sola respuesta.
 const DEBOUNCE_MS = 15_000; // 15 segundos — agrupa burbujas y da sensación más humana
 const pendingMessages = new Map(); // telefono → { timer, mensajes[] }
+
+// ── DEDUPLICACIÓN ────────────────────────────────────────────────────────────
+// Evolution API puede mandar el mismo evento varias veces (reintentos, delivery
+// receipts con el mismo ID). Guardamos los IDs procesados 5 min para evitar dobles.
+const processedIds = new Map(); // messageId → expiry timestamp
+const ID_TTL_MS = 5 * 60 * 1000;
+
+function yaFueProcesado(id) {
+  const expiry = processedIds.get(id);
+  if (!expiry) return false;
+  if (Date.now() > expiry) { processedIds.delete(id); return false; }
+  return true;
+}
+function marcarProcesado(id) {
+  processedIds.set(id, Date.now() + ID_TTL_MS);
+}
 
 /**
  * Procesa en background todos los mensajes acumulados de un usuario.
@@ -277,6 +293,12 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
  * y procesa todos los mensajes acumulados como uno solo.
  */
 router.post("/", (req, res) => {
+  // 1. Solo procesar eventos de mensajes nuevos — ignorar status, delivery, etc.
+  const evento = req.body?.event;
+  if (evento && evento !== "messages.upsert") {
+    return res.status(200).json({ status: "ignored", reason: `event:${evento}` });
+  }
+
   const data = req.body?.data;
 
   if (!data) return res.status(200).json({ status: "ignored", reason: "no data" });
@@ -284,6 +306,15 @@ router.post("/", (req, res) => {
 
   const remoteJid = data.key?.remoteJid || "";
   if (remoteJid.endsWith("@g.us")) return res.status(200).json({ status: "ignored", reason: "group" });
+
+  // 2. Deduplicar por messageId — evita procesar el mismo mensaje dos veces
+  const messageId = data.key?.id;
+  if (messageId) {
+    if (yaFueProcesado(messageId)) {
+      return res.status(200).json({ status: "ignored", reason: "duplicate" });
+    }
+    marcarProcesado(messageId);
+  }
 
   const telefono = extraerTelefono(remoteJid);
   const tipoMensaje = extraerTipoMensaje(data.message);
