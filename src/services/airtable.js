@@ -76,7 +76,7 @@ async function registrarOActualizarLead(telefono, lead) {
     "DISTRITO":            lead.ciudad             || "",
     "MOTIVO":              lead.motivo             || "",
     "PSICOLOGO ASIGNADO":  lead.psicologo_sugerido || "",
-    "ESTADO":              lead.calificacion       || "",
+    "ESTADO":              lead.calificacion       || "NUEVO",
     "ultima_actividad":    ahora,
     "PASO_FOLLOWUP":       0, // resetear al recibir mensaje real del usuario
   };

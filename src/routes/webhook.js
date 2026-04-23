@@ -266,6 +266,13 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
       promesas.push(crearMemoria(telefono, historialParaGuardar));
     }
 
+    // Airtable — desde que hay motivo para que el followup funcione
+    if (lead?.motivo) {
+      console.log(`[CRM] Lead con motivo: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
+      promesas.push(registrarOActualizarLead(telefono, lead));
+    }
+
+    // Google Sheets + notificación a asistente — solo cuando hay DNI
     if (lead?.dni_contacto) {
       console.log(`[CRM] Lead con DNI: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
       promesas.push(
