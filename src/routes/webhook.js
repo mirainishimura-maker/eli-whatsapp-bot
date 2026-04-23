@@ -107,7 +107,11 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
         try {
           const { base64, mimetype } = await descargarMediaBase64(msg.data);
           const transcripcion = await transcribirAudio(base64, mimetype);
-          textosFinales.push(`[El usuario envió un mensaje de voz diciendo:] ${transcripcion}`);
+          if (transcripcion && transcripcion.trim().length > 2) {
+            textosFinales.push(`[El usuario envió un mensaje de voz diciendo:] ${transcripcion}`);
+          } else {
+            textosFinales.push("[El usuario envió un audio pero no se escuchó nada — posiblemente el micrófono estaba apagado o el audio llegó en silencio. Pídele amablemente que lo reenvíe o que escriba lo que quería decir.]");
+          }
           console.log(`[WHISPER] ${telefono} → "${transcripcion}"`);
         } catch (e) {
           console.warn(`[AUDIO] Error al transcribir:`, e.message);
