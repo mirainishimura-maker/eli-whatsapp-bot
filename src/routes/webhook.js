@@ -217,6 +217,19 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
       await esperar(800);
     }
 
+    // Imágenes primero — llegan antes que el texto de respuesta
+    const imagenesEnviar = Array.isArray(imagenes) ? imagenes : [];
+    for (const imgId of imagenesEnviar) {
+      const img = IMAGENES[imgId];
+      if (img?.url) {
+        console.log(`[IMG] Enviando imagen "${imgId}" a ${telefono}`);
+        await enviarImagenUrl(telefono, img.url, img.caption);
+      } else {
+        console.warn(`[IMG] URL no configurada para imagen: "${imgId}"`);
+      }
+    }
+
+    // Texto después (incluye "Ahí están..." y "¿Qué tal te parece la ubicación?")
     await enviarMensajeChunked(telefono, respuesta);
 
     // ── 5. Persistencia y routing (en paralelo) ────────────────────────────
@@ -238,17 +251,6 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
           if (dniNuevo) return derivarLeadAAsistente(telefono, lead, "LISTO_PARA_COORDINAR");
         })
       );
-    }
-
-    const imagenesEnviar = Array.isArray(imagenes) ? imagenes : [];
-    for (const imgId of imagenesEnviar) {
-      const img = IMAGENES[imgId];
-      if (img?.url) {
-        console.log(`[IMG] Enviando imagen "${imgId}" a ${telefono}`);
-        promesas.push(enviarImagenUrl(telefono, img.url, img.caption));
-      } else {
-        console.warn(`[IMG] URL no configurada para imagen: "${imgId}"`);
-      }
     }
 
     const stickersEnviar = Array.isArray(stickers) ? stickers : [];
