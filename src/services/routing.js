@@ -1,39 +1,43 @@
 const { enviarMensaje } = require("./evolution");
 
 /**
- * Deriva notificaciones a Yazmin (asistente de Piura) según el tipo de evento.
+ * Deriva notificaciones a Yazmin (Piura) o Ayvi (Lima) según la ciudad del lead.
  *
  * Tipos:
  *   'NUEVO_LEAD'          — lead calificado por primera vez
  *   'LISTO_PARA_COORDINAR' — Eli ya recopiló DNI, listo para asignar horario y cobrar
  *   'RECONTACTO'          — lead frío, Eli envió seguimiento automático sin respuesta
  */
-async function derivarLeadAAsistente(telefonoCliente, lead, tipo = "NUEVO_LEAD") {
-  const numeroYazmin = process.env.ASISTENTE_PIURA;
+async function derivarLeadAAsistente(telefonoCliente, lead, tipo = "NUEVO_LEAD", resumen = "") {
+  const ciudad = (lead.ciudad || "").toLowerCase();
+  const esLima = ciudad === "lima";
 
-  if (!numeroYazmin) {
-    console.warn(`[ROUTING] No está configurado ASISTENTE_PIURA en el .env`);
+  const numeroAsistente = esLima ? process.env.ASISTENTE_LIMA : process.env.ASISTENTE_PIURA;
+  const nombreAsistente = esLima ? "Ayvi" : "Yazmin";
+  const sede = esLima ? "LIMA" : "PIURA";
+
+  if (!numeroAsistente) {
+    console.warn(`[ROUTING] No está configurado ASISTENTE_${sede} en el .env`);
     return;
   }
 
-  const mensajes = {
+  const construir = {
     NUEVO_LEAD:           construirNuevoLead,
     LISTO_PARA_COORDINAR: construirListoParaCoordinar,
     RECONTACTO:           construirRecontacto,
-  };
+  }[tipo] || construirNuevoLead;
 
-  const construir = mensajes[tipo] || construirNuevoLead;
-  const resumen = construir(telefonoCliente, lead);
+  const mensaje = construir(telefonoCliente, lead, nombreAsistente, sede, resumen);
 
-  await enviarMensaje(numeroYazmin, resumen);
-  console.log(`[ROUTING] Notificación ${tipo} enviada a Yazmin: ${numeroYazmin}`);
+  await enviarMensaje(numeroAsistente, mensaje);
+  console.log(`[ROUTING] Notificación ${tipo} enviada a ${nombreAsistente} (${sede}): ${numeroAsistente}`);
 }
 
 // ─────────────────────────────────────────────
-// PLANTILLAS DE MENSAJES PARA YAZMIN
+// PLANTILLAS DE MENSAJES
 // ─────────────────────────────────────────────
 
-function construirNuevoLead(telefonoCliente, lead) {
+function construirNuevoLead(telefonoCliente, lead, nombreAsistente, sede, resumen) {
   const icono = {
     ALTO:  "🔴 ALTO  — cierre rápido probable",
     MEDIO: "🟡 MEDIO — requiere seguimiento",
@@ -43,7 +47,7 @@ function construirNuevoLead(telefonoCliente, lead) {
   const esTercero = lead.para_quien && lead.para_quien !== "yo mismo";
 
   const lineas = [
-    "🔔 *NUEVO LEAD — ÍTACA PIURA*",
+    `🔔 *NUEVO LEAD — ÍTACA ${sede}*`,
     "",
     `📊 ${icono}`,
     "",
@@ -55,18 +59,19 @@ function construirNuevoLead(telefonoCliente, lead) {
   lineas.push(`🎂 Edad: ${lead.edad_paciente ?? "—"}`);
   lineas.push(`💬 Motivo: ${lead.motivo || "—"}`);
   if (lead.psicologo_sugerido) lineas.push(`👩‍⚕️ Psicólogo sugerido: ${lead.psicologo_sugerido}`);
+  if (resumen) lineas.push("", `📝 Contexto: ${resumen}`);
 
   lineas.push("", "⏳ Eli está recopilando datos. Te avisaré cuando esté listo para coordinar.");
 
   return lineas.join("\n");
 }
 
-function construirListoParaCoordinar(telefonoCliente, lead) {
+function construirListoParaCoordinar(telefonoCliente, lead, nombreAsistente, sede, resumen) {
   const esTercero = lead.para_quien && lead.para_quien !== "yo mismo";
   const nombre = lead.nombre_contacto || "el lead";
 
   const lineas = [
-    "✅ *LISTO PARA COORDINAR — ÍTACA PIURA*",
+    `✅ *LISTO PARA COORDINAR — ÍTACA ${sede}*`,
     "",
     `${nombre} confirmó que quiere agendar y Eli ya recopiló sus datos.`,
     "",
@@ -82,22 +87,22 @@ function construirListoParaCoordinar(telefonoCliente, lead) {
   lineas.push(`🎂 Edad: ${lead.edad_paciente ?? "—"}`);
   lineas.push(`💬 Motivo: ${lead.motivo || "—"}`);
   if (lead.psicologo_sugerido) lineas.push(`👩‍⚕️ Psicólogo sugerido: ${lead.psicologo_sugerido}`);
+  if (resumen) lineas.push("", `📝 Contexto: ${resumen}`);
 
   lineas.push("", "👉 *Siguiente paso:* envíale horarios disponibles y coordina el pago de S/50.");
 
   return lineas.join("\n");
 }
 
-function construirRecontacto(telefonoCliente, lead) {
-  // Soporta tanto campos del objeto lead (snake_case) como campos reales de Airtable (MAYÚSCULAS)
-  const nombre     = lead.nombre_contacto || lead["NOMBRES"]            || "este lead";
-  const motivo     = lead.motivo          || lead["MOTIVO"]             || "—";
-  const estado     = lead.calificacion    || lead["ESTADO"]             || "";
+function construirRecontacto(telefonoCliente, lead, nombreAsistente, sede, resumen) {
+  const nombre = lead.nombre_contacto || lead["NOMBRES"] || "este lead";
+  const motivo = lead.motivo          || lead["MOTIVO"]  || "—";
+  const estado = lead.calificacion    || lead["ESTADO"]  || "";
 
   const icono = { ALTO: "🔴 ALTO", MEDIO: "🟡 MEDIO", BAJO: "🟢 BAJO" }[estado] || "⚪";
 
   const lineas = [
-    "⚠️ *RECONTACTO PENDIENTE — ÍTACA PIURA*",
+    `⚠️ *RECONTACTO PENDIENTE — ÍTACA ${sede}*`,
     "",
     `Eli envió seguimiento automático a *${nombre}* pero no respondió.`,
     "",

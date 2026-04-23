@@ -50,6 +50,7 @@ const STICKERS = {
 
 const { procesarConIA, transcribirAudio } = require("../services/openai");
 const { derivarLeadAAsistente } = require("../services/routing");
+const { registrarLeadEnSheets } = require("../services/googlesheets");
 const { detectarCrisis } = require("../agents/detectarCrisis");
 const { analizarContexto } = require("../agents/analizarContexto");
 const { filtrarTopico } = require("../agents/filtrarTopico");
@@ -242,6 +243,21 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
     // ── 5. Persistencia y routing (en paralelo) ────────────────────────────
     const historialParaGuardar = await resumirSiNecesario(historialActualizado);
 
+    // Extraer resumen de conversación para incluir en Sheets y notificación
+    let resumenConversacion = "";
+    const primerMsg = historialParaGuardar[0];
+    if (primerMsg?.role === "system" && primerMsg.content.includes("[RESUMEN")) {
+      const match = primerMsg.content.match(/\[RESUMEN DE CONVERSACIÓN ANTERIOR: (.+?)\]/s);
+      if (match) resumenConversacion = match[1];
+    }
+    if (!resumenConversacion && lead?.motivo) {
+      const partes = [];
+      if (lead.calificacion) partes.push(`[${lead.calificacion}]`);
+      if (lead.para_quien && lead.para_quien !== "yo mismo") partes.push(`Para ${lead.para_quien}`);
+      partes.push(lead.motivo);
+      resumenConversacion = partes.join(" — ");
+    }
+
     const promesas = [];
 
     if (memoriaExistente) {
@@ -254,10 +270,11 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
       console.log(`[CRM] Lead con DNI: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
       promesas.push(
         registrarOActualizarLead(telefono, lead).then(({ isNew, dniNuevo }) => {
-          if (isNew) return derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD");
-          if (dniNuevo) return derivarLeadAAsistente(telefono, lead, "LISTO_PARA_COORDINAR");
+          if (isNew) return derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD", resumenConversacion);
+          if (dniNuevo) return derivarLeadAAsistente(telefono, lead, "LISTO_PARA_COORDINAR", resumenConversacion);
         })
       );
+      promesas.push(registrarLeadEnSheets(telefono, lead, resumenConversacion));
     }
 
     const stickersEnviar = Array.isArray(stickers) ? stickers : [];
