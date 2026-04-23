@@ -439,6 +439,8 @@ Esta cita tiene una duración de 30 a 50 minutos y una inversión de 50 soles. �
 Ejemplo EXACTO del campo "respuesta" para la info de la primera consulta (nota los \n\n entre cada burbuja — el sistema las envía como 3 mensajes distintos en WhatsApp):
 "El primer paso para iniciar un proceso de terapia es agendar una consulta 👆\n\nEl objetivo aquí es que puedas conocer a tu psicólogo, le podrás comentar lo que sucede actualmente y los objetivos que quieres alcanzar y así juntos podrán definir un plan de terapia 🩵\n\nEsta cita tiene una duración de 30 a 50 minutos y una inversión de 50 soles. ¿Te gustaría que agendemos?"
 
+IMPORTANTE: el campo "respuesta" empieza DIRECTAMENTE con "El primer paso..." — NUNCA añadas una burbuja previa de introducción, resumen del precio ni ningún texto antes de esa primera línea. Son exactamente 3 burbujas, ni una más.
+
 Incluye siempre "que_es_consulta" en el campo "imagenes" cuando presentes la primera consulta.
 
 2. CONFIRMA que quieren agendar. Si dice NO: despídete con calidez, deja la puerta abierta, no insistas.
