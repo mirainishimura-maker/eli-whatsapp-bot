@@ -114,7 +114,7 @@ async function registrarOActualizarLead(telefono, lead) {
  */
 async function obtenerLeadsEnFollowup() {
   const formula = encodeURIComponent(
-    `AND({ESTADO} != 'BAJO', {ESTADO} != '')`
+    `AND({ESTADO} != 'BAJO', {CELULAR} != '')`
   );
   const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
   return response.data.records.filter(
