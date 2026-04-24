@@ -50,7 +50,7 @@ const STICKERS = {
 
 const { procesarConIA, transcribirAudio } = require("../services/openai");
 const { derivarLeadAAsistente } = require("../services/routing");
-const { registrarLeadEnSheets } = require("../services/googlesheets");
+const { registrarLeadEnSheets, registrarLeadEnPipeline } = require("../services/googlesheets");
 const { detectarCrisis } = require("../agents/detectarCrisis");
 const { analizarContexto } = require("../agents/analizarContexto");
 const { filtrarTopico } = require("../agents/filtrarTopico");
@@ -271,6 +271,9 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
       console.log(`[CRM] Lead: ${lead.nombre_contacto || telefono} — ${lead.ciudad || "?"}`);
       promesas.push(
         registrarOActualizarLead(telefono, lead).then(({ isNew, dniNuevo }) => {
+          if (lead.ciudad) {
+            registrarLeadEnPipeline(telefono, lead);
+          }
           if (isNew) {
             derivarLeadAAsistente(telefono, lead, "NUEVO_LEAD", resumenConversacion);
           }
