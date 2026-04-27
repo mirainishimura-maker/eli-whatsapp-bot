@@ -3,6 +3,8 @@ const axios = require("axios");
 const BASE_URL = "https://api.airtable.com/v0";
 const BASE_ID = process.env.AIRTABLE_BASE_ID;
 const PAT = process.env.AIRTABLE_PAT;
+const TABLA_LEADS = process.env.AIRTABLE_TABLA_LEADS || "LEADS";
+const LEADS_PATH = `/${encodeURIComponent(TABLA_LEADS)}`;
 
 const airtableClient = axios.create({
   baseURL: `${BASE_URL}/${BASE_ID}`,
@@ -77,7 +79,7 @@ async function registrarOActualizarLead(telefono, lead) {
     "MOTIVO":              lead.motivo             || "",
     "PSICOLOGO ASIGNADO":  lead.psicologo_sugerido || "",
     "ESTADO":              lead.calificacion       || "NUEVO",
-    "ultima_actividad":    ahora,
+    "ult_actividad_bot":    ahora,
     "PASO_FOLLOWUP":       lead.dni_contacto ? 8 : 0, // 8 = completo (ya fue derivado), 0 = reiniciar
   };
 
@@ -90,7 +92,7 @@ async function registrarOActualizarLead(telefono, lead) {
   }
 
   const formula = encodeURIComponent(`{CELULAR}="${telefono}"`);
-  const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
+  const response = await airtableClient.get(`${LEADS_PATH}?filterByFormula=${formula}`);
   const records = response.data.records;
 
   if (records.length > 0) {
@@ -99,12 +101,12 @@ async function registrarOActualizarLead(telefono, lead) {
     // dniNuevo = había registro sin DNI y ahora llega con DNI
     const teniaDni = !!(record.fields["INFORMACION ADICIONAL DE SEGUIMIENTO"] || "").includes("DNI");
     const dniNuevo = !teniaDni && dniInfo.length > 0;
-    await airtableClient.patch(`/LEADS/${recordId}`, { fields });
+    await airtableClient.patch(`${LEADS_PATH}/${recordId}`, { fields });
     return { isNew: false, dniNuevo, recordId };
   }
 
   fields["FECHA"] = ahora;
-  const newRecord = await airtableClient.post("/LEADS", { fields });
+  const newRecord = await airtableClient.post(LEADS_PATH, { fields });
   return { isNew: true, dniNuevo: dniInfo.length > 0, recordId: newRecord.data.id };
 }
 
@@ -116,23 +118,23 @@ async function registrarOActualizarLead(telefono, lead) {
  */
 async function crearLeadInicialSiNoExiste(telefono) {
   const formula = encodeURIComponent(`{CELULAR}="${telefono}"`);
-  const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
+  const response = await airtableClient.get(`${LEADS_PATH}?filterByFormula=${formula}`);
   if (response.data.records.length > 0) {
     // Ya existe — solo actualizamos ultima_actividad para reiniciar el contador
     const recordId = response.data.records[0].id;
-    await airtableClient.patch(`/LEADS/${recordId}`, {
-      fields: { "ultima_actividad": new Date().toISOString() },
+    await airtableClient.patch(`${LEADS_PATH}/${recordId}`, {
+      fields: { "ult_actividad_bot": new Date().toISOString() },
     });
     return;
   }
 
   const ahora = new Date().toISOString();
-  await airtableClient.post("/LEADS", {
+  await airtableClient.post(LEADS_PATH, {
     fields: {
       "CELULAR":          telefono,
       "ESTADO":           "NUEVO",
       "FECHA":            ahora,
-      "ultima_actividad": ahora,
+      "ult_actividad_bot": ahora,
       "PASO_FOLLOWUP":    0,
     },
   });
@@ -146,7 +148,7 @@ async function obtenerLeadsEnFollowup() {
   const formula = encodeURIComponent(
     `AND({ESTADO} != 'BAJO', {CELULAR} != '')`
   );
-  const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
+  const response = await airtableClient.get(`${LEADS_PATH}?filterByFormula=${formula}`);
   return response.data.records.filter(
     (r) => (r.fields["PASO_FOLLOWUP"] ?? 0) < 8
   );
@@ -157,10 +159,10 @@ async function obtenerLeadsEnFollowup() {
  * el delay del siguiente paso a partir de este momento.
  */
 async function actualizarPasoFollowup(recordId, nuevoPaso) {
-  await airtableClient.patch(`/LEADS/${recordId}`, {
+  await airtableClient.patch(`${LEADS_PATH}/${recordId}`, {
     fields: {
       "PASO_FOLLOWUP":    nuevoPaso,
-      "ultima_actividad": new Date().toISOString(),
+      "ult_actividad_bot": new Date().toISOString(),
     },
   });
 }

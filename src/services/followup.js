@@ -99,7 +99,7 @@ async function verificarYEnviarFollowups() {
       const paso = record.fields["PASO_FOLLOWUP"] ?? 0;
       if (paso >= SECUENCIA.length) continue;
 
-      const ultimaActividad = record.fields.ultima_actividad;
+      const ultimaActividad = record.fields["ult_actividad_bot"];
       if (!ultimaActividad) continue;
 
       const diff = ahora - new Date(ultimaActividad).getTime();
