@@ -61,6 +61,7 @@ const {
   crearMemoria,
   actualizarMemoria,
   registrarOActualizarLead,
+  crearLeadInicialSiNoExiste,
 } = require("../services/airtable");
 const { calcularDemora, esperar } = require("../utils/humanDelay");
 
@@ -164,6 +165,13 @@ async function procesarMensajesAcumulados(telefono, mensajes) {
         return;
       }
     }
+
+    // Crear lead mínimo en Airtable apenas pasa el filtro — entra al sistema
+    // de followup desde el primer mensaje, aunque todavía no haya dado motivo.
+    // Si ya existe el lead, solo refresca ultima_actividad para reiniciar el contador.
+    crearLeadInicialSiNoExiste(telefono).catch((err) =>
+      console.warn(`[LEAD INICIAL] Error: ${err.message}`)
+    );
 
     // analizarContexto necesita el historial → arranca en cuanto lo tenemos,
     // en paralelo con lo que quede de crisisPromise

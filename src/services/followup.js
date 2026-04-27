@@ -1,7 +1,14 @@
 const { obtenerLeadsEnFollowup, actualizarPasoFollowup } = require("./airtable");
 const { enviarMensaje, enviarImagenUrl } = require("./evolution");
 
-const INTERVALO_MS = 15 * 60 * 1000; // revisar cada 15 min
+// Modo test: delays cortos (segundos) y verificación frecuente, para probar
+// la secuencia completa en ~5 minutos en vez de 15 días.
+// Activar con FOLLOWUP_TEST_MODE=true en el entorno.
+const TEST_MODE = process.env.FOLLOWUP_TEST_MODE === "true";
+
+const INTERVALO_MS = TEST_MODE
+  ? 20 * 1000          // cada 20s en test
+  : 15 * 60 * 1000;    // cada 15 min en producción
 
 // Las imágenes se sirven desde /public/followup/ en el mismo servidor del bot.
 // Solo necesitas configurar BOT_URL en .env (ej: https://eli.itacaconversemos.com)
@@ -22,51 +29,54 @@ function imgUrl(nombre) {
  *   Paso 6 → +10d  (imagen 9)
  *   Paso 7 → +15d  (imagen 10)
  */
+// En modo test, cada paso espera N segundos en vez de N horas
+const HORA_MS = TEST_MODE ? 1000 : 60 * 60 * 1000;
+
 const SECUENCIA = [
   {
-    delayMs: 1 * 60 * 60 * 1000,
+    delayMs: 1 * HORA_MS,
     imagen: null,
     texto: (nombre) =>
       `${nombre ? `Hola ${nombre} 🫂` : "Hola 🫂"} Pensamos en ti. Hay cosas que se sienten más ligeras cuando hay alguien con quien hablarlas. Estoy aquí para ayudarte, ¿conversamos? ¿Tienes dudas para empezar?`,
   },
   {
-    delayMs: 2 * 60 * 60 * 1000,
+    delayMs: 2 * HORA_MS,
     imagen: null,
     texto: () =>
       `No tienes que estar seguro/a de nada para empezar. La primera sesión es precisamente para eso: explorar, sin presión. ¿Hablamos? 🩵`,
   },
   {
-    delayMs: 21 * 60 * 60 * 1000,
+    delayMs: 21 * HORA_MS,
     imagen: () => imgUrl("followup-1.jpg"),
     texto: () =>
       `Hola 👋 Solo pasé a preguntarte esto. A veces la vida nos absorbe tanto que lo más importante lo dejamos para "después"... y ese después nunca llega. Si en algún momento sentiste que necesitabas un espacio para ti, aquí seguimos 🩵 ¿Seguimos donde lo dejamos?`,
   },
   {
-    delayMs: 48 * 60 * 60 * 1000,
+    delayMs: 48 * HORA_MS,
     imagen: () => imgUrl("followup-2.jpg"),
     texto: () =>
       `¿Te suena familiar? 😅 El momento perfecto nunca llega solo. Pero tú sí puedes crearlo. Escríbenos y buscamos juntos el espacio que funcione para ti. 🩵`,
   },
   {
-    delayMs: 48 * 60 * 60 * 1000,
+    delayMs: 48 * HORA_MS,
     imagen: () => imgUrl("followup-8.jpg"),
     texto: () =>
       `Estas preguntas no son para alarmarte. Son para recordarte que mereces entenderte mejor. Podemos ayudarte en eso. 🫂🩵`,
   },
   {
-    delayMs: 48 * 60 * 60 * 1000,
+    delayMs: 48 * HORA_MS,
     imagen: () => imgUrl("followup-5.jpg"),
     texto: () =>
       `Ese primer paso ya lo diste cuando nos contactaste. No dejes que quede a medias. Aún tienes tiempo de agendarte. Escríbenos 💬🩵`,
   },
   {
-    delayMs: 72 * 60 * 60 * 1000,
+    delayMs: 72 * HORA_MS,
     imagen: () => imgUrl("followup-9.jpg"),
     texto: () =>
       `Hace un tiempo nos contactaste y algo te trajo hasta aquí. Ese algo sigue siendo válido. Cuando sientas que es momento, la puerta está abierta. 🩵💬`,
   },
   {
-    delayMs: 120 * 60 * 60 * 1000,
+    delayMs: 120 * HORA_MS,
     imagen: () => imgUrl("followup-10.jpg"),
     texto: () =>
       `Queremos recordarte que seguimos aquí, con espacio para ti. Si quieres dar el paso, es tan sencillo como responder este mensaje. ¿Conversamos? 💬🩵`,
@@ -121,9 +131,14 @@ async function verificarYEnviarFollowups() {
 }
 
 function iniciarFollowup() {
-  console.log("[FOLLOWUP] Secuencia de 8 pasos activa — verifica cada 15 min");
-  setTimeout(verificarYEnviarFollowups, 2 * 60 * 1000);
+  if (TEST_MODE) {
+    console.log("[FOLLOWUP] ⚠️  MODO TEST activo — delays en segundos, verifica cada 20s");
+    setTimeout(verificarYEnviarFollowups, 5 * 1000);
+  } else {
+    console.log("[FOLLOWUP] Secuencia de 8 pasos activa — verifica cada 15 min");
+    setTimeout(verificarYEnviarFollowups, 2 * 60 * 1000);
+  }
   setInterval(verificarYEnviarFollowups, INTERVALO_MS);
 }
 
-module.exports = { iniciarFollowup };
+module.exports = { iniciarFollowup, verificarYEnviarFollowups };

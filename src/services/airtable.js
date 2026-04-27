@@ -109,6 +109,36 @@ async function registrarOActualizarLead(telefono, lead) {
 }
 
 /**
+ * Crea un registro mínimo en LEADS apenas el usuario manda su primer mensaje.
+ * Solo guarda CELULAR + ultima_actividad + PASO_FOLLOWUP=0 si el lead no existe.
+ * Esto asegura que TODOS los que escriben entren al sistema de followup,
+ * incluso si nunca llegan a dar motivo.
+ */
+async function crearLeadInicialSiNoExiste(telefono) {
+  const formula = encodeURIComponent(`{CELULAR}="${telefono}"`);
+  const response = await airtableClient.get(`/LEADS?filterByFormula=${formula}`);
+  if (response.data.records.length > 0) {
+    // Ya existe — solo actualizamos ultima_actividad para reiniciar el contador
+    const recordId = response.data.records[0].id;
+    await airtableClient.patch(`/LEADS/${recordId}`, {
+      fields: { "ultima_actividad": new Date().toISOString() },
+    });
+    return;
+  }
+
+  const ahora = new Date().toISOString();
+  await airtableClient.post("/LEADS", {
+    fields: {
+      "CELULAR":          telefono,
+      "ESTADO":           "NUEVO",
+      "FECHA":            ahora,
+      "ultima_actividad": ahora,
+      "PASO_FOLLOWUP":    0,
+    },
+  });
+}
+
+/**
  * Retorna todos los leads activos que aún no completaron la secuencia de followup.
  * El filtrado por tiempo y paso lo hace followup.js.
  */
@@ -140,6 +170,7 @@ module.exports = {
   crearMemoria,
   actualizarMemoria,
   registrarOActualizarLead,
+  crearLeadInicialSiNoExiste,
   obtenerLeadsEnFollowup,
   actualizarPasoFollowup,
 };
