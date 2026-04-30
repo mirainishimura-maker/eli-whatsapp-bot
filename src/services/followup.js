@@ -6,9 +6,16 @@ const { enviarMensaje, enviarImagenUrl } = require("./evolution");
 // Activar con FOLLOWUP_TEST_MODE=true en el entorno.
 const TEST_MODE = process.env.FOLLOWUP_TEST_MODE === "true";
 
+// Modo demo: UN solo paso de texto a los 2 min, para validar end-to-end
+// que el sistema dispara correctamente sin esperar la secuencia completa.
+// Activar con FOLLOWUP_DEMO_MODE=true en el entorno.
+const DEMO_MODE = process.env.FOLLOWUP_DEMO_MODE === "true";
+
 const INTERVALO_MS = TEST_MODE
   ? 20 * 1000          // cada 20s en test
-  : 15 * 60 * 1000;    // cada 15 min en producción
+  : DEMO_MODE
+    ? 30 * 1000        // cada 30s en demo
+    : 15 * 60 * 1000;  // cada 15 min en producción
 
 // Las imágenes se sirven desde /public/followup/ en el mismo servidor del bot.
 // Solo necesitas configurar BOT_URL en .env (ej: https://eli.itacaconversemos.com)
@@ -31,6 +38,15 @@ function imgUrl(nombre) {
  */
 // En modo test, cada paso espera N segundos en vez de N horas
 const HORA_MS = TEST_MODE ? 1000 : 60 * 60 * 1000;
+
+const SECUENCIA_DEMO = [
+  {
+    delayMs: 2 * 60 * 1000, // 2 minutos
+    imagen: null,
+    texto: (nombre) =>
+      `${nombre ? `Hola ${nombre} 🫂` : "Hola 🫂"} Pensamos en ti. Hay cosas que se sienten más ligeras cuando hay alguien con quien hablarlas. Estoy aquí para ayudarte, ¿conversamos?`,
+  },
+];
 
 const SECUENCIA = [
   {
@@ -95,15 +111,17 @@ async function verificarYEnviarFollowups() {
 
     const ahora = Date.now();
 
+    const SECUENCIA_ACTIVA = DEMO_MODE ? SECUENCIA_DEMO : SECUENCIA;
+
     for (const record of leads) {
       const paso = record.fields["PASO_FOLLOWUP"] ?? 0;
-      if (paso >= SECUENCIA.length) continue;
+      if (paso >= SECUENCIA_ACTIVA.length) continue;
 
       const ultimaActividad = record.fields["ult_actividad_bot"];
       if (!ultimaActividad) continue;
 
       const diff = ahora - new Date(ultimaActividad).getTime();
-      const step = SECUENCIA[paso];
+      const step = SECUENCIA_ACTIVA[paso];
 
       if (diff < step.delayMs) continue;
 
@@ -134,6 +152,9 @@ function iniciarFollowup() {
   if (TEST_MODE) {
     console.log("[FOLLOWUP] ⚠️  MODO TEST activo — delays en segundos, verifica cada 20s");
     setTimeout(verificarYEnviarFollowups, 5 * 1000);
+  } else if (DEMO_MODE) {
+    console.log("[FOLLOWUP] ⚠️  MODO DEMO activo — 1 mensaje a los 2 min, verifica cada 30s");
+    setTimeout(verificarYEnviarFollowups, 30 * 1000);
   } else {
     console.log("[FOLLOWUP] Secuencia de 8 pasos activa — verifica cada 15 min");
     setTimeout(verificarYEnviarFollowups, 2 * 60 * 1000);

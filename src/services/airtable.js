@@ -145,9 +145,7 @@ async function crearLeadInicialSiNoExiste(telefono) {
  * El filtrado por tiempo y paso lo hace followup.js.
  */
 async function obtenerLeadsEnFollowup() {
-  const formula = encodeURIComponent(
-    `AND({ESTADO} != 'BAJO', {CELULAR} != '')`
-  );
+  const formula = encodeURIComponent(`{CELULAR} != ''`);
   const response = await airtableClient.get(`${LEADS_PATH}?filterByFormula=${formula}`);
   return response.data.records.filter(
     (r) => (r.fields["PASO_FOLLOWUP"] ?? 0) < 8
